@@ -1164,7 +1164,7 @@ function AuthScreen({ onAuthed }) {
     const { data: emailTaken } = await sb.rpc("is_email_taken", { p_email: em });
     if (emailTaken) { setBusy(false); return focusInvalid("email", "이미 가입된 이메일이에요."); }
 
-    const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id } } });
+    const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id }, emailRedirectTo: window.location.href } });
     setBusy(false);
     if (signUpErr) return setError(signUpErr.message);
     setSignupDone(em);
