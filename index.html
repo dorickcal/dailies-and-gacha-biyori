@@ -1166,7 +1166,10 @@ function AuthScreen({ onAuthed }) {
 
     const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id }, emailRedirectTo: "https://dorickcal.github.io/dailies-and-gacha-biyori/" } });
     setBusy(false);
-    if (signUpErr) return setError(signUpErr.message);
+    if (signUpErr) {
+      if (/rate limit/i.test(signUpErr.message)) return setError("이메일 서버 점검 중이에요. 잠시 후 다시 시도해주세요.");
+      return setError(signUpErr.message);
+    }
     setSignupDone(em);
   };
 
