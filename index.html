@@ -1,0 +1,1645 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>일퀘가챠 하기 좋은 날</title>
+<style>
+  :root {
+    --bg: #F8F7FC; --surface: #FFFFFF; --surface2: #EFEAFA; --border: #E1DCEF;
+    --accent: #B6AAD5; --accent2: #00A9E0; --accent2-light: #9FE3F5; --accent-deep: #6A4C93; --jpy: #5C7CA6;
+    --text: #000000; --muted: #4A3F63;
+    --on-accent: #000000; --on-accent-muted: #4A3F63;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #B6AAD5; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    color: var(--text);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+  }
+  .app-scroll::-webkit-scrollbar { display: none; }
+  .app-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+  @keyframes blink-urgent {
+    0%, 100% { color: var(--muted); }
+    50% { color: var(--accent2); }
+  }
+  @keyframes blink-card-bg {
+    0%, 100% { background-color: var(--surface); }
+    50% { background-color: var(--accent2-light); }
+  }
+  @keyframes blink-border {
+    0%, 100% { border-color: var(--border); }
+    50% { border-color: var(--accent-deep); }
+  }
+  @keyframes marquee-scroll {
+    0%, 10% { transform: translateX(0); }
+    85% { transform: translateX(var(--marquee-distance)); }
+    95% { transform: translateX(var(--marquee-distance)); animation-timing-function: steps(1); }
+    100% { transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="text/babel" data-presets="react,env">
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+/* ============================================================
+   ICONS (hand-rolled, no external icon lib on the published page)
+   ============================================================ */
+function Icon({ d, size = 18, strokeWidth = 2, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" style={style}>
+      <path d={d} />
+    </svg>
+  );
+}
+const IconCheck = (p) => <Icon {...p} d="M20 6L9 17l-5-5" />;
+const IconPlus = (p) => <Icon {...p} d="M12 5v14M5 12h14" />;
+const IconX = (p) => <Icon {...p} d="M18 6L6 18M6 6l12 12" />;
+const IconTrash = (p) => <Icon {...p} d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z" />;
+const IconPencil = (p) => <Icon {...p} d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />;
+const IconWallet = (p) => <Icon {...p} d="M21 12V7H5a2 2 0 010-4h14v4M3 5v14a2 2 0 002 2h16v-5M18 12a2 2 0 100 4 2 2 0 000-4z" />;
+const IconList = (p) => <Icon {...p} d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />;
+const IconBarChart = (p) => <Icon {...p} d="M12 20V10M18 20V4M6 20v-4" />;
+const IconController = (p) => <Icon {...p} d="M6 12h4m-2-2v4M15 11h.01M18 13h.01M7 6h10a5 5 0 015 5v3a3 3 0 01-3 3c-1 0-1.5-.5-2.5-1.5S15 14 12 14s-2.5 1-3.5 2-1.5 1.5-2.5 1.5a3 3 0 01-3-3v-3a5 5 0 015-5z" />;
+const IconDownload = (p) => <Icon {...p} d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />;
+const IconUpload = (p) => <Icon {...p} d="M12 21V9m0 0l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />;
+const IconLogout = (p) => <Icon {...p} d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />;
+
+/* ============================================================
+   SEED DATA
+   ============================================================ */
+const SEED_GAMES = [{"id": "g3", "title": "블루 아카이브", "server": "한국", "startDate": "2021-12-09", "endDate": null, "status": "진행", "notes": "유즈 내 딸임", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 398480}, {"id": "g4", "title": "블루 아카이브", "server": "일본", "startDate": null, "endDate": null, "status": "진행", "notes": "ユズ（娘）", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 9580}, {"id": "g5", "title": "승리의 여신 : 니케", "server": "한국", "startDate": "2023-11-02", "endDate": null, "status": "진행", "notes": "페르소나 콜라보", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 1163300}, {"id": "g6", "title": "승리의 여신 : 니케", "server": "일본", "startDate": "2025-05-01", "endDate": "2026-05-15", "status": "중단", "notes": "3.5주년 폭사", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g7", "title": "트릭컬 : 리바이브", "server": "한국", "startDate": "2023-10-04", "endDate": null, "status": "진행", "notes": "에르핀 내 딸임", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 2018160}, {"id": "g8", "title": "트릭컬 : 리바이브", "server": "일본", "startDate": "2025-10-09", "endDate": "2026-04-29", "status": "중단", "notes": "1주년까지 봉인(10월)", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 5700}, {"id": "g9", "title": "리버스 : 1999", "server": "한국", "startDate": "2023-10-27", "endDate": "2026-05-24", "status": "중단", "notes": "3주년까지 봉인(10월)", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g10", "title": "브라운더스트 2", "server": "한국", "startDate": "2023-10-10", "endDate": null, "status": "진행", "notes": "뇌 빼고 일퀘만", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 0}, {"id": "g11", "title": "소녀전선 2 : 망명", "server": "일본", "startDate": "2025-05-29", "endDate": "2025-07-11", "status": "중단", "notes": "순수 노잼", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g12", "title": "붕괴 : 스타레일", "server": "아시아", "startDate": "2025-05-04", "endDate": "2025-08-26", "status": "중단", "notes": "턴제인 것 말고는 무엇도 취향이 아님", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g13", "title": "젠레스 존 제로", "server": "아시아", "startDate": null, "endDate": null, "status": "진행", "notes": "일단 복귀", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 34670}, {"id": "g14", "title": "명조 : 워더링 웨이브", "server": "한국", "startDate": "2025-05-22", "endDate": null, "status": "진행", "notes": "청초 경연 스킵", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 344140}, {"id": "g15", "title": "SD건담 지 제네레이션 이터널", "server": "한국", "startDate": "2025-10-05", "endDate": "2026-04-30", "status": "중단", "notes": "1주년 끝", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g16", "title": "에픽세븐", "server": "한국", "startDate": "2025-10-06", "endDate": "2026-01-01", "status": "중단", "notes": "프리렌 뽑고 봉인", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g17", "title": "로스트 소드", "server": "한국", "startDate": "2025-01-27", "endDate": "2026-05-01", "status": "중단", "notes": "천박 원툴(게다가 쁘더가 압승)", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 5500}, {"id": "g18", "title": "스텔라 소라", "server": "한국", "startDate": "2025-10-21", "endDate": "2026-05-24", "status": "중단", "notes": "1.5주년까지 봉인", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g19", "title": "스텔라 소라", "server": "일본", "startDate": "2025-10-22", "endDate": "2026-01-03", "status": "중단", "notes": "폭사", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g20", "title": "명일방주", "server": "한국", "startDate": "2026-02-11", "endDate": "2026-02-11", "status": "중단", "notes": "리세만 하다가 포기", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 0}, {"id": "g21", "title": "명일방주 : 엔드필드", "server": "한국", "startDate": "2026-01-23", "endDate": null, "status": "진행", "notes": "", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 90572}, {"id": "g22", "title": "림버스 컴퍼니", "server": "한국", "startDate": "2026-04-28", "endDate": null, "status": "진행", "notes": "9월 새 시즌", "dailyQuest": false, "lastCheckedDate": null, "totalSpend": 31300}, {"id": "g23", "title": "홀로라이브 드림스", "server": "글로벌", "startDate": "2026-07-29", "endDate": null, "status": "진행", "notes": "재밌긴 해", "dailyQuest": true, "lastCheckedDate": "2026-09-12", "totalSpend": 1980}];
+
+const SEED_PAYMENTS_RAW = [{"id": "p1", "gameId": "g3", "date": "2025-01-07", "product": "월간 청휘석 패키지", "amount": 4900}, {"id": "p2", "gameId": "g3", "date": "2025-01-07", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p3", "gameId": "g3", "date": "2025-04-27", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p4", "gameId": "g3", "date": "2025-04-27", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p5", "gameId": "g3", "date": "2025-04-29", "product": "신입 선생 청휘석 패키지", "amount": 1500}, {"id": "p6", "gameId": "g3", "date": "2025-04-29", "product": "신입 선생 청휘석 패키지", "amount": 1500}, {"id": "p7", "gameId": "g3", "date": "2025-04-29", "product": "신입 선생 청휘석 패키지", "amount": 1500}, {"id": "p8", "gameId": "g3", "date": "2025-04-29", "product": "Sheside Outside 3성 선택 모집 패키지", "amount": 29000}, {"id": "p9", "gameId": "g3", "date": "2025-04-29", "product": "청휘석 784", "amount": 9900}, {"id": "p10", "gameId": "g3", "date": "2025-06-01", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p11", "gameId": "g3", "date": "2025-06-01", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p12", "gameId": "g3", "date": "2025-07-01", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p13", "gameId": "g3", "date": "2025-07-02", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p14", "gameId": "g3", "date": "2025-08-02", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p15", "gameId": "g3", "date": "2025-08-02", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p16", "gameId": "g3", "date": "2025-09-01", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p17", "gameId": "g3", "date": "2025-09-01", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p18", "gameId": "g3", "date": "2025-10-01", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p19", "gameId": "g3", "date": "2025-10-01", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p20", "gameId": "g3", "date": "2025-11-01", "product": "월간 청휘석 패키지", "amount": 6900}, {"id": "p21", "gameId": "g3", "date": "2025-11-01", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p22", "gameId": "g3", "date": "2025-12-02", "product": "월간 청휘석 패키지", "amount": 8910}, {"id": "p23", "gameId": "g3", "date": "2025-12-02", "product": "하프 월간 청휘석 패키지", "amount": 3960}, {"id": "p24", "gameId": "g3", "date": "2025-12-17", "product": "배틀 패스(CH. 성장+)", "amount": 34000}, {"id": "p25", "gameId": "g3", "date": "2025-12-24", "product": "신임교사용 청휘석 패키지", "amount": 1500}, {"id": "p26", "gameId": "g3", "date": "2025-12-24", "product": "신임교사용 청휘석 패키지", "amount": 1500}, {"id": "p27", "gameId": "g3", "date": "2025-12-24", "product": "신임교사용 청휘석 패키지", "amount": 1500}, {"id": "p28", "gameId": "g3", "date": "2025-12-24", "product": "신임 교사 환영 패키지", "amount": 600}, {"id": "p29", "gameId": "g3", "date": "2025-12-24", "product": "하프 월간 청휘석 패키지(Lite)", "amount": 1500}, {"id": "p30", "gameId": "g3", "date": "2025-12-24", "product": "월간 청휘석 패키지(Lite)", "amount": 3000}, {"id": "p31", "gameId": "g3", "date": "2025-12-24", "product": "2주 AP 패키지", "amount": 4400}, {"id": "p32", "gameId": "g3", "date": "2025-12-24", "product": "주간 AP 패키지 II", "amount": 3000}, {"id": "p33", "gameId": "g3", "date": "2025-12-31", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p34", "gameId": "g3", "date": "2025-12-31", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p35", "gameId": "g3", "date": "2025-12-31", "product": "주간 AP 패키지 II", "amount": 3000}, {"id": "p36", "gameId": "g3", "date": "2026-01-30", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p37", "gameId": "g3", "date": "2026-01-30", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p38", "gameId": "g3", "date": "2026-03-02", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p39", "gameId": "g3", "date": "2026-03-02", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p40", "gameId": "g3", "date": "2026-03-02", "product": "2주 AP 패키지", "amount": 4400}, {"id": "p41", "gameId": "g3", "date": "2026-04-02", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p42", "gameId": "g3", "date": "2026-04-02", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p43", "gameId": "g3", "date": "2026-04-02", "product": "2주 AP 패키지", "amount": 4400}, {"id": "p44", "gameId": "g3", "date": "2026-05-01", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p45", "gameId": "g3", "date": "2026-05-01", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p46", "gameId": "g3", "date": "2026-06-01", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p47", "gameId": "g3", "date": "2026-06-01", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p48", "gameId": "g3", "date": "2026-06-01", "product": "2주 AP 패키지", "amount": 4400}, {"id": "p49", "gameId": "g3", "date": "2026-06-06", "product": "배틀 패스(CH. 성장+) II", "amount": 34000}, {"id": "p50", "gameId": "g3", "date": "2026-06-06", "product": "강철대륙 공략전 기념 출석부", "amount": 19000}, {"id": "p51", "gameId": "g3", "date": "2026-06-06", "product": "모집 지원 패키지", "amount": 4400}, {"id": "p52", "gameId": "g3", "date": "2026-06-06", "product": "모집 지원 패키지", "amount": 4400}, {"id": "p53", "gameId": "g3", "date": "2026-07-01", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p54", "gameId": "g3", "date": "2026-07-01", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p55", "gameId": "g3", "date": "2026-08-01", "product": "월간 청휘석 패키지", "amount": 9900}, {"id": "p56", "gameId": "g3", "date": "2026-08-01", "product": "하프 월간 청휘석 패키지", "amount": 4400}, {"id": "p57", "gameId": "g4", "date": "2024-07-25", "product": "マンスリーパッケージ", "amount": 1000}, {"id": "p58", "gameId": "g4", "date": "2024-07-25", "product": "マンスリーパッケージ（ハーフ）", "amount": 480}, {"id": "p59", "gameId": "g4", "date": "2024-07-25", "product": "2weeksスタミナパッケージ", "amount": 480}, {"id": "p60", "gameId": "g4", "date": "2024-08-23", "product": "マンスリーパッケージ", "amount": 1000}, {"id": "p61", "gameId": "g4", "date": "2024-08-23", "product": "マンスリーパッケージ（ハーフ）", "amount": 480}, {"id": "p62", "gameId": "g4", "date": "2024-09-27", "product": "マンスリーパッケージ", "amount": 1000}, {"id": "p63", "gameId": "g4", "date": "2024-09-27", "product": "マンスリーパッケージ（ハーフ）", "amount": 480}, {"id": "p64", "gameId": "g4", "date": "2024-10-28", "product": "マンスリーパッケージ", "amount": 1000}, {"id": "p65", "gameId": "g4", "date": "2024-10-28", "product": "マンスリーパッケージ（ハーフ）", "amount": 480}, {"id": "p66", "gameId": "g4", "date": "2024-11-08", "product": "新任教師用青輝石パッケージ", "amount": 160}, {"id": "p67", "gameId": "g4", "date": "2024-11-08", "product": "新任教師用青輝石パッケージ", "amount": 160}, {"id": "p68", "gameId": "g4", "date": "2024-11-08", "product": "新任教師用青輝石パッケージ", "amount": 160}, {"id": "p69", "gameId": "g4", "date": "2024-11-08", "product": "【初回限定】ウェルカムパッケージ", "amount": 60}, {"id": "p70", "gameId": "g4", "date": "2024-11-08", "product": "青輝石 III（limited）", "amount": 1000}, {"id": "p71", "gameId": "g4", "date": "2024-11-08", "product": "青輝石 I（limited）", "amount": 160}, {"id": "p72", "gameId": "g4", "date": "2024-11-26", "product": "マンスリーパッケージ", "amount": 1000}, {"id": "p73", "gameId": "g4", "date": "2024-11-26", "product": "マンスリーパッケージ（ハーフ）", "amount": 480}, {"id": "p74", "gameId": "g5", "date": "2025-01-07", "product": "30 DAY 보급품", "amount": 7500}, {"id": "p75", "gameId": "g5", "date": "2025-01-19", "product": "기업 타워 돌파 기념 루피의 추천 상품 1-1", "amount": 1500}, {"id": "p76", "gameId": "g5", "date": "2025-05-02", "product": "장밋빛 수갑 x 6", "amount": 15000}, {"id": "p77", "gameId": "g5", "date": "2025-05-02", "product": "장밋빛 수갑 x 6", "amount": 15000}, {"id": "p78", "gameId": "g5", "date": "2025-05-02", "product": "장밋빛 수갑 x 6", "amount": 15000}, {"id": "p79", "gameId": "g5", "date": "2025-05-02", "product": "장밋빛 수갑 x 6", "amount": 15000}, {"id": "p80", "gameId": "g5", "date": "2025-05-02", "product": "장밋빛 수갑 x 6", "amount": 15000}, {"id": "p81", "gameId": "g5", "date": "2025-05-02", "product": "미션패스 31", "amount": 30000}, {"id": "p82", "gameId": "g5", "date": "2025-05-02", "product": "신입 지휘관 패키지 2", "amount": 7500}, {"id": "p83", "gameId": "g5", "date": "2025-05-02", "product": "30 DAY 보급품", "amount": 7500}, {"id": "p84", "gameId": "g5", "date": "2025-07-18", "product": "수영 가방 x 6", "amount": 15000}, {"id": "p85", "gameId": "g5", "date": "2025-07-27", "product": "수영 가방 x 6", "amount": 12750}, {"id": "p86", "gameId": "g5", "date": "2025-07-27", "product": "수영 가방 x 6", "amount": 12750}, {"id": "p87", "gameId": "g5", "date": "2025-07-27", "product": "수영 가방 x 6", "amount": 12750}, {"id": "p88", "gameId": "g5", "date": "2025-07-27", "product": "수영 가방 x 6", "amount": 12750}, {"id": "p89", "gameId": "g5", "date": "2025-07-27", "product": "수영 가방 x 6", "amount": 12750}, {"id": "p90", "gameId": "g5", "date": "2025-07-27", "product": "30 DAY 성장 보급품", "amount": 19550}, {"id": "p91", "gameId": "g5", "date": "2025-07-27", "product": "이벤트 미션 패스 32", "amount": 25500}, {"id": "p92", "gameId": "g5", "date": "2025-11-03", "product": "이벤트 미션 패스 36", "amount": 30000}, {"id": "p93", "gameId": "g5", "date": "2025-11-03", "product": "미션패스 37", "amount": 30000}, {"id": "p94", "gameId": "g5", "date": "2025-11-08", "product": "황금빛 연꽃 x 6", "amount": 15000}, {"id": "p95", "gameId": "g5", "date": "2025-11-08", "product": "황금빛 연꽃 x 6", "amount": 15000}, {"id": "p96", "gameId": "g5", "date": "2025-11-08", "product": "황금빛 연꽃 x 6", "amount": 15000}, {"id": "p97", "gameId": "g5", "date": "2025-11-08", "product": "황금빛 연꽃 x 6", "amount": 15000}, {"id": "p98", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p99", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p100", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p101", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p102", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p103", "gameId": "g5", "date": "2025-12-05", "product": "바니의 황금 티켓 x 6", "amount": 15000}, {"id": "p104", "gameId": "g5", "date": "2025-12-05", "product": "미션패스 38", "amount": 30000}, {"id": "p105", "gameId": "g5", "date": "2026-01-22", "product": "이벤트 미션 패스 38", "amount": 30000}, {"id": "p106", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p107", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p108", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p109", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p110", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p111", "gameId": "g5", "date": "2026-01-22", "product": "동화 속 회중시계 x 6", "amount": 15000}, {"id": "p112", "gameId": "g5", "date": "2026-01-30", "product": "미션패스 39", "amount": 24000}, {"id": "p113", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p114", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p115", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p116", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p117", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p118", "gameId": "g5", "date": "2026-03-12", "product": "해적 수영복 티백 x 6", "amount": 15000}, {"id": "p119", "gameId": "g5", "date": "2026-04-26", "product": "이벤트 미션 패스 43", "amount": 30000}, {"id": "p120", "gameId": "g5", "date": "2026-04-26", "product": "스텝업 패키지 STEP 2", "amount": 7500}, {"id": "p121", "gameId": "g5", "date": "2026-04-26", "product": "스텝업 패키지 STEP 5", "amount": 30000}, {"id": "p122", "gameId": "g5", "date": "2026-04-26", "product": "스텝업 패키지 STEP 8", "amount": 30000}, {"id": "p123", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p124", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p125", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p126", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p127", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p128", "gameId": "g5", "date": "2026-05-14", "product": "화합을 담은 팔레트 x 6", "amount": 15000}, {"id": "p129", "gameId": "g5", "date": "2026-05-20", "product": "별빛을 담은 병 x 6", "amount": 15000}, {"id": "p130", "gameId": "g5", "date": "2026-05-20", "product": "별빛을 담은 병 x 6", "amount": 15000}, {"id": "p131", "gameId": "g5", "date": "2026-05-20", "product": "별빛을 담은 병 x 6", "amount": 15000}, {"id": "p132", "gameId": "g5", "date": "2026-05-20", "product": "별빛을 담은 병 x 6", "amount": 15000}, {"id": "p133", "gameId": "g5", "date": "2026-05-20", "product": "별빛을 담은 병 x 6", "amount": 15000}, {"id": "p134", "gameId": "g5", "date": "2025-05-31", "product": "미션패스 43", "amount": 30000}, {"id": "p135", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p136", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p137", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p138", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p139", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p140", "gameId": "g5", "date": "2026-07-01", "product": "닳은 대본 x 6", "amount": 15000}, {"id": "p141", "gameId": "g5", "date": "2026-07-22", "product": "이벤트 미션 패스 47", "amount": 24000}, {"id": "p142", "gameId": "g5", "date": "2026-07-29", "product": "미션패스 45", "amount": 30000}, {"id": "p143", "gameId": "g7", "date": "2023-10-06", "product": "교단 성장 패키지", "amount": 9900}, {"id": "p144", "gameId": "g7", "date": "2023-10-06", "product": "교단 생산 패키지", "amount": 9900}, {"id": "p145", "gameId": "g7", "date": "2023-10-06", "product": "교단 요리 패키지", "amount": 9900}, {"id": "p146", "gameId": "g7", "date": "2023-10-06", "product": "초보 교주 성장 패키지", "amount": 1100}, {"id": "p147", "gameId": "g7", "date": "2023-10-06", "product": "스텝업 패키지1", "amount": 6600}, {"id": "p148", "gameId": "g7", "date": "2023-10-06", "product": "트릭컬 패스2", "amount": 24000}, {"id": "p149", "gameId": "g7", "date": "2023-11-02", "product": "트릭컬 패스2", "amount": 24000}, {"id": "p150", "gameId": "g7", "date": "2023-12-01", "product": "트릭컬 패스2", "amount": 24000}, {"id": "p151", "gameId": "g7", "date": "2025-01-07", "product": "리바이브 패스", "amount": 22000}, {"id": "p152", "gameId": "g7", "date": "2025-02-02", "product": "리바이브 패스", "amount": 24000}, {"id": "p153", "gameId": "g7", "date": "2025-03-08", "product": "리바이브 패스", "amount": 24000}, {"id": "p154", "gameId": "g7", "date": "2025-03-26", "product": "키디언 사복패스", "amount": 19800}, {"id": "p155", "gameId": "g7", "date": "2025-04-02", "product": "리바이브 패스", "amount": 24000}, {"id": "p156", "gameId": "g7", "date": "2025-04-04", "product": "풀하트 매직 패키지", "amount": 29500}, {"id": "p157", "gameId": "g7", "date": "2025-04-21", "product": "슈로 사복 패스", "amount": 19800}, {"id": "p158", "gameId": "g7", "date": "2025-04-21", "product": "데일리 엘리프 공물", "amount": 9900}, {"id": "p159", "gameId": "g7", "date": "2025-04-21", "product": "핑크빛 데이트 나들이 세트", "amount": 29500}, {"id": "p160", "gameId": "g7", "date": "2025-04-21", "product": "레벨 패스1", "amount": 15000}, {"id": "p161", "gameId": "g7", "date": "2025-04-24", "product": "자철석 네티 패키지", "amount": 9900}, {"id": "p162", "gameId": "g7", "date": "2025-05-01", "product": "리바이브 패스", "amount": 24000}, {"id": "p163", "gameId": "g7", "date": "2025-05-09", "product": "마리너 호의 선장", "amount": 9900}, {"id": "p164", "gameId": "g7", "date": "2025-05-17", "product": "아이시아 사복 패스", "amount": 19800}, {"id": "p165", "gameId": "g7", "date": "2025-05-30", "product": "바니바니 카페 대작전! 세트", "amount": 29500}, {"id": "p166", "gameId": "g7", "date": "2025-06-01", "product": "리바이브 패스", "amount": 24000}, {"id": "p167", "gameId": "g7", "date": "2025-06-24", "product": "폴랑 사복 패스", "amount": 19800}, {"id": "p168", "gameId": "g7", "date": "2025-07-03", "product": "리바이브 패스", "amount": 24000}, {"id": "p169", "gameId": "g7", "date": "2025-07-11", "product": "마요(멋짐) 사복 패스", "amount": 19800}, {"id": "p170", "gameId": "g7", "date": "2025-07-27", "product": "너무 시원한 여름 휴가 세트", "amount": 29500}, {"id": "p171", "gameId": "g7", "date": "2025-08-01", "product": "리바이브 패스", "amount": 24000}, {"id": "p172", "gameId": "g7", "date": "2025-08-13", "product": "모모 사복 패스", "amount": 19800}, {"id": "p173", "gameId": "g7", "date": "2025-08-13", "product": "라이브커머스 특별 패키지", "amount": 49500}, {"id": "p174", "gameId": "g7", "date": "2025-08-15", "product": "마카샤의 수첩", "amount": 5500}, {"id": "p175", "gameId": "g7", "date": "2025-08-22", "product": "쉬어가세요! 칠링 바캉스! 세트", "amount": 29500}, {"id": "p176", "gameId": "g7", "date": "2025-09-01", "product": "리바이브 패스", "amount": 23120}, {"id": "p177", "gameId": "g7", "date": "2025-09-07", "product": "로네(시장) 사복 패스", "amount": 19800}, {"id": "p178", "gameId": "g7", "date": "2025-09-11", "product": "위험한 옆집 스파이", "amount": 9900}, {"id": "p179", "gameId": "g7", "date": "2025-09-14", "product": "뮤트의 태블릿", "amount": 5500}, {"id": "p180", "gameId": "g7", "date": "2025-09-19", "product": "한밤의 럼블! 파자마 파티! 세트", "amount": 29500}, {"id": "p181", "gameId": "g7", "date": "2025-09-25", "product": "우로스 테먀극장 패스", "amount": 5500}, {"id": "p182", "gameId": "g7", "date": "2025-09-25", "product": "데일리 엘리프 공물", "amount": 9900}, {"id": "p183", "gameId": "g7", "date": "2025-09-25", "product": "데일리 별사탕 공물", "amount": 9900}, {"id": "p184", "gameId": "g7", "date": "2025-09-25", "product": "데일리 왕사탕 공물", "amount": 5500}, {"id": "p185", "gameId": "g7", "date": "2025-09-25", "product": "폭풍 속 검은 날개 패스", "amount": 29500}, {"id": "p186", "gameId": "g7", "date": "2025-10-01", "product": "창공의 하얀 날개 패키지", "amount": 29500}, {"id": "p187", "gameId": "g7", "date": "2025-10-01", "product": "스텝업 패키지3", "amount": 9900}, {"id": "p188", "gameId": "g7", "date": "2025-10-01", "product": "리바이브 패스", "amount": 24000}, {"id": "p189", "gameId": "g7", "date": "2025-10-03", "product": "엘레나 사복 패스", "amount": 15840}, {"id": "p190", "gameId": "g7", "date": "2025-10-12", "product": "시장님의 개인 컴퓨터", "amount": 5500}, {"id": "p191", "gameId": "g7", "date": "2025-10-17", "product": "즐겁고 힘든 온천기행! 세트", "amount": 29500}, {"id": "p192", "gameId": "g7", "date": "2025-10-27", "product": "미로의 전신 거울", "amount": 5500}, {"id": "p193", "gameId": "g7", "date": "2025-11-01", "product": "데일리 별사탕 공물", "amount": 9900}, {"id": "p194", "gameId": "g7", "date": "2025-11-01", "product": "림(혼돈) 사복 패스", "amount": 19800}, {"id": "p195", "gameId": "g7", "date": "2025-11-01", "product": "리바이브 패스", "amount": 22500}, {"id": "p196", "gameId": "g7", "date": "2025-11-10", "product": "빼빼로 스페셜 패키지", "amount": 11000}, {"id": "p197", "gameId": "g7", "date": "2025-11-10", "product": "달콤한 빼빼로 사탕가득 패키지", "amount": 1100}, {"id": "p198", "gameId": "g7", "date": "2025-11-10", "product": "아사나의 대학원 논문", "amount": 5500}, {"id": "p199", "gameId": "g7", "date": "2025-11-16", "product": "퀘스트 완료! 판타지 모험단! 사복 세트", "amount": 49500}, {"id": "p200", "gameId": "g7", "date": "2025-11-22", "product": "베니(베니)의 꿀단지 창고", "amount": 5500}, {"id": "p201", "gameId": "g7", "date": "2025-11-29", "product": "다야 사복 패스", "amount": 19800}, {"id": "p202", "gameId": "g7", "date": "2025-12-02", "product": "리바이브 패스", "amount": 19200}, {"id": "p203", "gameId": "g7", "date": "2025-12-03", "product": "블랙 프라이데이 엘리프 패키지", "amount": 29500}, {"id": "p204", "gameId": "g7", "date": "2025-12-03", "product": "블랙 프라이데이 사탕 패키지", "amount": 1100}, {"id": "p205", "gameId": "g7", "date": "2025-12-06", "product": "하이디의 인터뷰", "amount": 5500}, {"id": "p206", "gameId": "g7", "date": "2025-12-13", "product": "새로운 겨울 세트", "amount": 29500}, {"id": "p207", "gameId": "g7", "date": "2025-12-20", "product": "아일라의 일광욕", "amount": 5500}, {"id": "p208", "gameId": "g7", "date": "2025-12-20", "product": "왕궁의 화젯거리", "amount": 19800}, {"id": "p209", "gameId": "g7", "date": "2025-12-31", "product": "안녕 2025 패키지", "amount": 1100}, {"id": "p210", "gameId": "g7", "date": "2025-12-31", "product": "환영 2026 패키지", "amount": 6600}, {"id": "p211", "gameId": "g7", "date": "2026-01-08", "product": "시온 사복 패스", "amount": 29500}, {"id": "p212", "gameId": "g7", "date": "2026-01-09", "product": "리바이브 패스", "amount": 24000}, {"id": "p213", "gameId": "g7", "date": "2026-01-09", "product": "깜짝 교단 파티 세트", "amount": 29500}, {"id": "p214", "gameId": "g7", "date": "2026-01-09", "product": "요미의 눈부신 달빛", "amount": 5500}, {"id": "p215", "gameId": "g7", "date": "2026-01-17", "product": "셰이디(역전)의 파수 일지", "amount": 5500}, {"id": "p216", "gameId": "g7", "date": "2026-01-29", "product": "비비 사복 패스", "amount": 29500}, {"id": "p217", "gameId": "g7", "date": "2026-02-12", "product": "마법 소녀 활동 기록", "amount": 5500}, {"id": "p218", "gameId": "g7", "date": "2026-02-12", "product": "당신의 완벽한 메이드가 되기 위하여! 세트", "amount": 29500}, {"id": "p219", "gameId": "g7", "date": "2026-02-26", "product": "잉클의 책", "amount": 5500}, {"id": "p220", "gameId": "g7", "date": "2026-03-05", "product": "이드 사복 패스", "amount": 23600}, {"id": "p221", "gameId": "g7", "date": "2026-03-12", "product": "아멜리아(R41)의 저장 장치", "amount": 5500}, {"id": "p222", "gameId": "g7", "date": "2026-03-12", "product": "당신을 위한 응원! 세트", "amount": 29500}, {"id": "p223", "gameId": "g7", "date": "2026-03-26", "product": "델리아의 탐험 일지", "amount": 5500}, {"id": "p224", "gameId": "g7", "date": "2026-03-29", "product": "에피카 사복패스", "amount": 29500}, {"id": "p225", "gameId": "g7", "date": "2026-03-29", "product": "리바이브 패스", "amount": 24000}, {"id": "p226", "gameId": "g7", "date": "2026-03-29", "product": "새싹 교주 사도 선택 패키지", "amount": 1100}, {"id": "p227", "gameId": "g7", "date": "2026-03-29", "product": "★3 4인조 커스텀 패키지", "amount": 1100}, {"id": "p228", "gameId": "g7", "date": "2026-03-29", "product": "왕관의 주인공 패키지", "amount": 29500}, {"id": "p229", "gameId": "g7", "date": "2026-03-29", "product": "왕관의 수여자 패키지", "amount": 29500}, {"id": "p230", "gameId": "g7", "date": "2026-03-29", "product": "스텝업 패키지3", "amount": 9900}, {"id": "p231", "gameId": "g7", "date": "2026-03-29", "product": "네르(빡침)의 육아일기", "amount": 5500}, {"id": "p232", "gameId": "g7", "date": "2026-04-02", "product": "리바이브 패스", "amount": 24000}, {"id": "p233", "gameId": "g7", "date": "2026-04-03", "product": "두근두근! 대환장쇼! 사복 세트", "amount": 29500}, {"id": "p234", "gameId": "g7", "date": "2026-04-03", "product": "데일리 엘리프 공물", "amount": 9900}, {"id": "p235", "gameId": "g7", "date": "2026-04-03", "product": "데일리 별사탕 공물", "amount": 9900}, {"id": "p236", "gameId": "g7", "date": "2026-04-03", "product": "데일리 왕사탕 공물", "amount": 5500}, {"id": "p237", "gameId": "g7", "date": "2026-04-10", "product": "풍성한 사복 코디함", "amount": 6600}, {"id": "p238", "gameId": "g7", "date": "2026-04-10", "product": "풍성한 사복 코디함", "amount": 6600}, {"id": "p239", "gameId": "g7", "date": "2026-04-10", "product": "새벽의 여정 로비 패키지", "amount": 29500}, {"id": "p240", "gameId": "g7", "date": "2026-04-10", "product": "데일리 엘리프 공물", "amount": 9900}, {"id": "p241", "gameId": "g7", "date": "2026-04-21", "product": "클로에 사복 패스", "amount": 29500}, {"id": "p242", "gameId": "g7", "date": "2026-04-21", "product": "스텝업 패키지6", "amount": 29500}, {"id": "p243", "gameId": "g7", "date": "2026-04-21", "product": "스텝업 패키지9", "amount": 49500}, {"id": "p244", "gameId": "g7", "date": "2026-04-22", "product": "헤일리의 진료 노트", "amount": 5500}, {"id": "p245", "gameId": "g7", "date": "2026-04-22", "product": "헤일리의 각성 패키지", "amount": 9900}, {"id": "p246", "gameId": "g7", "date": "2026-04-22", "product": "헤일리의 각성 패키지", "amount": 9900}, {"id": "p247", "gameId": "g7", "date": "2026-05-07", "product": "아라그니아의 보석함", "amount": 5500}, {"id": "p248", "gameId": "g7", "date": "2026-05-07", "product": "푸른 하늘 위 타임어택! 세트", "amount": 24500}, {"id": "p249", "gameId": "g7", "date": "2026-05-20", "product": "레비(졸업)의 졸업논문", "amount": 5500}, {"id": "p250", "gameId": "g7", "date": "2026-05-28", "product": "란 사복 패스", "amount": 29500}, {"id": "p251", "gameId": "g7", "date": "2026-05-31", "product": "개쩜 패스", "amount": 19200}, {"id": "p252", "gameId": "g7", "date": "2026-06-04", "product": "이드(재활)의 꿈 일기", "amount": 5500}, {"id": "p253", "gameId": "g7", "date": "2026-07-01", "product": "개쩜 패스", "amount": 24000}, {"id": "p254", "gameId": "g7", "date": "2026-07-01", "product": "실비아의 명예 수첩", "amount": 5500}, {"id": "p255", "gameId": "g7", "date": "2026-07-01", "product": "스텝업 패키지3", "amount": 9900}, {"id": "p256", "gameId": "g7", "date": "2026-07-01", "product": "개쩜 패스", "amount": 24000}, {"id": "p257", "gameId": "g7", "date": "2026-07-01", "product": "엘다인 출시 기념 특별 구성 패키지", "amount": 1100}, {"id": "p258", "gameId": "g7", "date": "2026-07-03", "product": "스키아의 나아갈 길", "amount": 5500}, {"id": "p259", "gameId": "g7", "date": "2026-07-07", "product": "데일리 엘리프 공물", "amount": 9900}, {"id": "p260", "gameId": "g7", "date": "2026-07-23", "product": "우이 사복 패스", "amount": 29500}, {"id": "p261", "gameId": "g8", "date": "2025-10-11", "product": "300円パック", "amount": 300}, {"id": "p262", "gameId": "g8", "date": "2025-10-15", "product": "2,400円パック", "amount": 2400}, {"id": "p263", "gameId": "g8", "date": "2025-10-18", "product": "3,000円パック", "amount": 3000}, {"id": "p264", "gameId": "g13", "date": "2024-07-07", "product": "「웰컴 투 리두」기프트박스", "amount": 120}, {"id": "p265", "gameId": "g13", "date": "2024-07-07", "product": "인터노트 멤버십", "amount": 610}, {"id": "p266", "gameId": "g13", "date": "2024-07-08", "product": "「호감어린 초대」기프트박스", "amount": 1220}, {"id": "p267", "gameId": "g13", "date": "2024-07-08", "product": "「단독초대」기프트박스", "amount": 1840}, {"id": "p268", "gameId": "g13", "date": "2024-07-09", "product": "「진심어린 초대」기프트박스", "amount": 610}, {"id": "p269", "gameId": "g13", "date": "2024-07-09", "product": "프리미엄 플랜", "amount": 2480}, {"id": "p270", "gameId": "g13", "date": "2024-07-16", "product": "모노크롬 x 6480", "amount": 12000}, {"id": "p271", "gameId": "g13", "date": "2024-08-23", "product": "모노크롬 x 980", "amount": 1840}, {"id": "p272", "gameId": "g13", "date": "2024-08-23", "product": "모노크롬 x 6480", "amount": 12000}, {"id": "p273", "gameId": "g13", "date": "2024-08-23", "product": "모노크롬 x 60", "amount": 120}, {"id": "p274", "gameId": "g13", "date": "2024-08-23", "product": "모노크롬 x 300", "amount": 610}, {"id": "p275", "gameId": "g13", "date": "2024-08-25", "product": "인터노트 멤버십", "amount": 610}, {"id": "p276", "gameId": "g13", "date": "2024-08-25", "product": "인터노트 멤버십", "amount": 610}, {"id": "p277", "gameId": "g14", "date": "2025-05-11", "product": "", "amount": 5600}, {"id": "p278", "gameId": "g14", "date": "2025-06-01", "product": "달빛 관측 카드", "amount": 900}, {"id": "p279", "gameId": "g14", "date": "2025-06-01", "product": "유니버스 스페셜 채널", "amount": 22000}, {"id": "p280", "gameId": "g14", "date": "2026-06-06", "product": "유니버스 채널", "amount": 12000}, {"id": "p281", "gameId": "g14", "date": "2026-06-09", "product": "특가 패키지40", "amount": 19000}, {"id": "p282", "gameId": "g14", "date": "2026-06-09", "product": "특가 패키지41", "amount": 19000}, {"id": "p283", "gameId": "g14", "date": "2026-06-09", "product": "특가 패키지39", "amount": 5900}, {"id": "p284", "gameId": "g14", "date": "2026-06-11", "product": "달빛 관측 카드", "amount": 5900}, {"id": "p285", "gameId": "g14", "date": "2026-06-11", "product": "달빛\"6480", "amount": 119000}, {"id": "p286", "gameId": "g14", "date": "2026-06-11", "product": "유니버스 채널", "amount": 12000}, {"id": "p287", "gameId": "g14", "date": "2026-06-12", "product": "???", "amount": 56040}, {"id": "p288", "gameId": "g14", "date": "2026-06-12", "product": "달빛\"980", "amount": 19000}, {"id": "p289", "gameId": "g14", "date": "2026-07-08", "product": "달빛*1980", "amount": 37000}, {"id": "p290", "gameId": "g14", "date": "2026-08-01", "product": "유니버스 채널", "amount": 10800}, {"id": "p291", "gameId": "g17", "date": "2025-01-28", "product": "팬드래건의 유산", "amount": 5500}, {"id": "p292", "gameId": "g21", "date": "2026-01-25", "product": "프로토콜 커스터마이즈", "amount": 12000}, {"id": "p293", "gameId": "g21", "date": "2026-01-25", "product": "월정액", "amount": 5900}, {"id": "p294", "gameId": "g21", "date": "2026-02-23", "product": "장대한 염원 장비 조합 패키지", "amount": 1200}, {"id": "p295", "gameId": "g21", "date": "2026-02-23", "product": "월정액", "amount": 5600}, {"id": "p296", "gameId": "g21", "date": "2026-04-15", "product": "프로토콜 커스터마이즈", "amount": 11332}, {"id": "p297", "gameId": "g21", "date": "2026-05-21", "product": "", "amount": 1100}, {"id": "p298", "gameId": "g21", "date": "2026-05-21", "product": "프로토콜 커스터마이즈", "amount": 11200}, {"id": "p299", "gameId": "g21", "date": "2026-05-21", "product": "", "amount": 5600}, {"id": "p300", "gameId": "g21", "date": "2026-05-22", "product": "", "amount": 16530}, {"id": "p301", "gameId": "g21", "date": "2026-07-15", "product": "프로토콜 커스터마이즈", "amount": 11200}, {"id": "p302", "gameId": "g21", "date": "2026-08-12", "product": "프로토콜 커스터마이즈", "amount": 8910}, {"id": "p303", "gameId": "g22", "date": "2026-04-28", "product": "광기 다발", "amount": 17000}, {"id": "p304", "gameId": "g22", "date": "2026-04-28", "product": "월간 광기 패키지", "amount": 9900}, {"id": "p305", "gameId": "g22", "date": "2026-04-28", "product": "월간 광기 소형 패키지", "amount": 4400}, {"id": "p306", "gameId": "g23", "date": "2026-04-28", "product": "프리미엄 미션 패스", "amount": 1980}];
+
+const SEED_QUESTLOG = (() => {
+  const entries = [];
+  const dailyGames = SEED_GAMES.filter(g => g.status === "진행");
+  const start = new Date("2026-09-01T00:00:00");
+  const end = new Date("2026-09-12T00:00:00");
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    dailyGames.forEach(g => entries.push({ date: iso, gameId: g.id, done: true }));
+  }
+  return entries;
+})();
+
+const SEED_VERSION = "2026-09-13-local-date-fix";
+const BACKFILL_FLAG = "limbus-zenless-sep-backfill-v2";
+const BACKFILL_ENTRIES = (() => {
+  const entries = [];
+  const ids = ["g13", "g22"]; // 젠레스 존 제로, 림버스 컴퍼니
+  const start = new Date("2026-09-01T00:00:00");
+  const end = new Date("2026-09-12T00:00:00");
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    ids.forEach(id => entries.push({ date: iso, gameId: id, done: true }));
+  }
+  return entries;
+})();
+const RESTORE_FLAG = "restore-stella-jp-v1";
+const IMPORT_DATE_INIT_FLAG = "import-date-init-v1";
+const RUN_DATE_BACKFILL_FLAG = "run-date-backfill-v1";
+const IMPORT_DATE_INIT_VALUE = "2026-08-12";
+const RESTORE_GAME = SEED_GAMES.find(g => g.id === "g19"); // 스텔라 소라 (일본)
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
+const CURRENCY = { "한국": "₩", "일본": "¥", "아시아": "¥", "글로벌": "¥" };
+const JPY_TO_KRW_RATE = 10; // fixed fallback: 100엔 = 1000원
+
+// --- Supabase (로그인 전용, 아직 게임/과금/일일퀘스트 데이터는 연결 안 함) ---
+const SUPABASE_URL = "https://xdhuunshwyhygabvghaq.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhkaHV1bnNod3loeWdhYnZnaGFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODkzODI4ODQsImV4cCI6MjEwNDk1ODg4NH0.yFp7iKN5QD05-xc4R0xF7ItOlA8rIXt63TNE9iiZzKs";
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const ID_PATTERN = /^[a-z0-9_]{4,20}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const toKRW = (amount, server) => server === "한국" ? amount : amount * JPY_TO_KRW_RATE;
+const pad2 = (n) => String(n).padStart(2, "0");
+const todayISO = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+function gameTodayISO(resetHour) {
+  const h = resetHour || 0;
+  const d = new Date();
+  if (h > 0 && d.getHours() < h) d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function timeUntilReset(resetHour) {
+  const h = resetHour || 0;
+  const now = new Date();
+  const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, 0, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const totalSec = Math.max(0, Math.round((target - now) / 1000));
+  return { hh: Math.floor(totalSec / 3600), mm: Math.floor((totalSec % 3600) / 60), ss: totalSec % 60 };
+}
+const fmtMoney = (n, cur) => `${cur}${Math.round(n).toLocaleString()}`;
+const fmtDate = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso + "T00:00:00");
+  return `${String(d.getFullYear()).slice(2)}.${d.getMonth() + 1}.${d.getDate()}`;
+};
+const fmtDateLong = (iso) => {
+  if (!iso) return "-";
+  const d = new Date(iso + "T00:00:00");
+  return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+};
+function computeStreak(questLog, gameId, asOf) {
+  const doneDates = new Set(questLog.filter(q => q.gameId === gameId && q.done).map(q => q.date));
+  const monthOf = asOf.slice(0, 7);
+  let streak = 0;
+  let cursor = new Date(asOf + "T00:00:00");
+  if (!doneDates.has(asOf)) cursor.setDate(cursor.getDate() - 1);
+  while (true) {
+    const iso = `${cursor.getFullYear()}-${pad2(cursor.getMonth() + 1)}-${pad2(cursor.getDate())}`;
+    if (iso.slice(0, 7) !== monthOf) break;
+    if (doneDates.has(iso)) { streak += 1; cursor.setDate(cursor.getDate() - 1); }
+    else break;
+  }
+  return streak;
+}
+function monthKey(iso) { return iso ? iso.slice(0, 7) : null; }
+
+/* ============================================================
+   GOOGLE PLAY IMPORT
+   ============================================================ */
+const GOOGLE_TITLE_ALIASES = { "limbus company": "림버스 컴퍼니" };
+function normalizeGameName(s) {
+  return (s || "").toLowerCase().replace(/[\s:：]/g, "");
+}
+function parseGooglePlayJSON(rawText, games) {
+  let data;
+  try { data = JSON.parse(rawText); } catch (e) { return { rows: [], error: "JSON 형식을 읽을 수 없어요." }; }
+  if (!Array.isArray(data)) return { rows: [], error: "예상한 구글 플레이 결제 내역 형식이 아니에요." };
+
+  // build lookup: normalized game name -> matching game objects (could be >1 if multiple servers)
+  const byNorm = {};
+  games.forEach(g => {
+    const key = normalizeGameName(g.title);
+    (byNorm[key] = byNorm[key] || []).push(g);
+  });
+
+  const rows = [];
+  data.forEach((entry, i) => {
+    const ph = entry.purchaseHistory;
+    if (!ph) return;
+    const docType = ph.doc?.documentType;
+    if (docType !== "In App Item") return; // skip subscriptions/unknown/app installs
+    const fullTitle = ph.doc?.title || "";
+    const m = fullTitle.match(/\(([^()]+)\)\s*$/);
+    if (!m) return;
+    const rawName = m[1].trim();
+    const product = fullTitle.slice(0, fullTitle.lastIndexOf("(")).trim();
+    const priceStr = ph.invoicePrice || "";
+    const currency = priceStr.startsWith("₩") ? "₩" : priceStr.startsWith("¥") ? "¥" : priceStr.startsWith("$") ? "$" : "";
+    const amount = Number(priceStr.replace(/[^0-9.]/g, "")) || 0;
+    if (amount <= 0) return; // skip free items
+    if (currency === "$") return; // not a KRW/JPY game purchase, skip (e.g. unrelated apps)
+    const dateObj = ph.purchaseTime ? new Date(ph.purchaseTime) : null;
+    const date = dateObj ? `${dateObj.getFullYear()}-${pad2(dateObj.getMonth() + 1)}-${pad2(dateObj.getDate())}` : "";
+    if (!date) return;
+
+    const aliasKey = GOOGLE_TITLE_ALIASES[rawName.toLowerCase()];
+    const normKey = normalizeGameName(aliasKey || rawName);
+    const matches = byNorm[normKey] || [];
+    // prefer 한국 server match when ambiguous (Google Play KR account)
+    const best = matches.find(g => g.server === "한국") || matches[0] || null;
+
+    rows.push({
+      key: `${i}`, rawName, product, amount, currency, date,
+      gameId: best ? best.id : "",
+    });
+  });
+  return { rows, error: null };
+}
+
+/* ============================================================
+   PAYPAY IMPORT
+   ============================================================ */
+const PAYPAY_GAME_MERCHANTS = ["GRYPHLINE", "Kuro Games", "HoYoverse", "Haoplay"];
+const PAYPAY_MERCHANT_ALIASES = {
+  "GRYPHLINE": "명일방주 : 엔드필드",
+  "Kuro Games": "명조 : 워더링 웨이브",
+  "HoYoverse": "젠레스 존 제로",
+  // "Haoplay" intentionally left unmapped — publishes multiple tracked titles in KR, needs manual pick
+};
+function parseCSVLine(line) {
+  const result = [];
+  let cur = "", inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') inQuotes = !inQuotes;
+    else if (c === "," && !inQuotes) { result.push(cur); cur = ""; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+function parsePayPayCSV(rawText, games) {
+  const text = rawText.replace(/^\uFEFF/, "");
+  const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
+  if (lines.length < 2) return { rows: [], error: "PayPay CSV 형식을 읽을 수 없어요." };
+  const header = parseCSVLine(lines[0]);
+  const iDate = header.indexOf("取引日");
+  const iOut = header.indexOf("出金金額（円）");
+  const iType = header.indexOf("取引内容");
+  const iMerchant = header.indexOf("取引先");
+  if (iDate < 0 || iType < 0 || iMerchant < 0) return { rows: [], error: "예상한 PayPay 내역 형식이 아니에요." };
+
+  const byNorm = {};
+  games.forEach(g => {
+    const key = normalizeGameName(g.title);
+    (byNorm[key] = byNorm[key] || []).push(g);
+  });
+
+  const rows = [];
+  for (let li = 1; li < lines.length; li++) {
+    const cols = parseCSVLine(lines[li]);
+    const type = cols[iType];
+    const merchant = (cols[iMerchant] || "").trim();
+    if (type !== "支払い") continue;
+    if (!PAYPAY_GAME_MERCHANTS.includes(merchant)) continue;
+    const amount = Number((cols[iOut] || "").replace(/[",]/g, "")) || 0;
+    if (amount <= 0) continue;
+    const dparts = (cols[iDate] || "").split(" ")[0].split("/");
+    if (dparts.length !== 3) continue;
+    const date = `${dparts[0]}-${pad2(Number(dparts[1]))}-${pad2(Number(dparts[2]))}`;
+
+    const aliasTitle = PAYPAY_MERCHANT_ALIASES[merchant];
+    const matches = aliasTitle ? (byNorm[normalizeGameName(aliasTitle)] || []) : [];
+    const best = matches[0] || null;
+
+    rows.push({
+      key: `pp${li}`, rawName: merchant, product: `PayPay 결제 (${merchant})`, amount, currency: "¥", date,
+      gameId: best ? best.id : "",
+    });
+  }
+  return { rows, error: null };
+}
+
+/* ============================================================
+   MARQUEE
+   ============================================================ */
+function MarqueeText({ text, active, style }) {
+  const containerRef = useRef(null);
+  const textRef = useRef(null);
+  const [distance, setDistance] = useState(0);
+  useEffect(() => {
+    const c = containerRef.current, t = textRef.current;
+    if (c && t) {
+      const diff = t.scrollWidth - c.clientWidth;
+      setDistance(diff > 4 ? diff : 0);
+    }
+  }, [text]);
+  return (
+    <div ref={containerRef} style={{ overflow: "hidden", whiteSpace: "nowrap", ...style }}>
+      <span ref={textRef} style={{
+        display: "inline-block",
+        animation: (distance > 0 && active) ? "marquee-scroll 4s ease-in-out infinite" : "none",
+        "--marquee-distance": `-${distance}px`,
+      }}>{text}</span>
+    </div>
+  );
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+const TAB_TITLES = { today: "일일", games: "게임", payments: "과금", stats: "통계" };
+const GREETING_PATTERNS = ["{name}, 어서와!", "{name}, 반가워!", "{name}, 오늘도 달려보자!"];
+function Header({ today, tab, username, onSetUsername, onLogoutClick }) {
+  const [clock, setClock] = useState(new Date());
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(username || "");
+  const [greetingIdx] = useState(() => Math.floor(Math.random() * GREETING_PATTERNS.length));
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => { setDraft(username || ""); }, [username]);
+  const d = new Date(today + "T00:00:00");
+  const dateLabel = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const weekday = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+  const h24 = clock.getHours();
+  const ampm = h24 < 12 ? "오전" : "오후";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  const clockLabel = `${ampm} ${h12}시 ${clock.getMinutes()}분 ${clock.getSeconds()}초`;
+
+  const saveUsername = () => { onSetUsername(draft.trim().slice(0, 12)); setEditing(false); };
+
+  return (
+    <div style={{ padding: "14px 20px 12px", borderBottom: "1px solid var(--border)", background: "var(--accent)", position: "relative" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ maxWidth: "calc(100% - 150px)" }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "var(--on-accent)" }}>{TAB_TITLES[tab]}</div>
+          {editing ? (
+            <input
+              autoFocus
+              maxLength={12}
+              value={draft}
+              onChange={e => setDraft(e.target.value.slice(0, 12))}
+              onBlur={saveUsername}
+              onKeyDown={e => { if (e.key === "Enter") saveUsername(); if (e.key === "Escape") { setDraft(username || ""); setEditing(false); } }}
+              style={{
+                marginTop: 3, fontSize: 13, fontWeight: 600, color: "var(--text)", background: "var(--surface)",
+                border: "1px solid var(--border)", borderRadius: 6, padding: "2px 6px", width: 120, outline: "none",
+              }}
+            />
+          ) : (
+            <button onClick={() => setEditing(true)} style={{ background: "none", border: "none", padding: 0, marginTop: 3, cursor: "pointer", fontSize: 13, fontWeight: 600, color: "var(--on-accent-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%", display: "block" }}>
+              {username ? GREETING_PATTERNS[greetingIdx].replace("{name}", username) : "무명의 당신, 이곳을 눌러라!"}
+            </button>
+          )}
+        </div>
+        <div style={{ textAlign: "right", color: "var(--on-accent-muted)", position: "absolute", top: 14, right: 20 }}>
+          <div style={{ fontSize: 12 }}>{dateLabel} · {weekday}요일</div>
+          <div style={{ fontSize: 12, fontFamily: "ui-monospace, monospace", marginTop: 3 }}>{clockLabel}</div>
+          <button onClick={onLogoutClick} style={{ background: "none", border: "none", padding: 0, marginTop: 12, cursor: "pointer", fontSize: 11.5, color: "var(--on-accent-muted)", textDecoration: "underline" }}>
+            로그아웃
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
+   TODAY TAB
+   ============================================================ */
+function TodayTab({ dailyGames, hasGames, questLog, onToggle }) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (dailyGames.length === 0) {
+    return <EmptyState text={hasGames ? "일일퀘스트를 체크할 게임이 없어요. '게임' 탭에서 켜보세요." : "아직 등록된 게임이 없어요.\n'게임' 탭에서 추가해보세요."} />;
+  }
+  return (
+    <div style={{ paddingTop: 16 }}>
+      {dailyGames.map(g => {
+        const gToday = gameTodayISO(g.resetHour);
+        const done = questLog.some(q => q.gameId === g.id && q.date === gToday && q.done);
+        const streak = computeStreak(questLog, g.id, gToday);
+        const yDate = new Date(gToday + "T00:00:00");
+        yDate.setDate(yDate.getDate() - 1);
+        const gYesterday = `${yDate.getFullYear()}-${pad2(yDate.getMonth() + 1)}-${pad2(yDate.getDate())}`;
+        const yesterdayDone = questLog.some(q => q.gameId === g.id && q.date === gYesterday && q.done);
+        return (
+          <TodayGameRow
+            key={g.id} game={g} gToday={gToday} done={done} streak={streak}
+            gYesterday={gYesterday} yesterdayDone={yesterdayDone}
+            onToggle={onToggle}
+          />
+        );
+      })}
+    </div>
+  );
+}
+function TodayGameRow({ game: g, gToday, done, streak, gYesterday, yesterdayDone, onToggle }) {
+  const [active, setActive] = useState(false);
+  const resetIn = timeUntilReset(g.resetHour);
+  const urgent = resetIn.hh === 0 && !done;
+  return (
+    <div
+      style={{ display: "flex", alignItems: "stretch", background: done ? "var(--surface2)" : "var(--surface)", border: `1px solid ${done ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, padding: "14px 14px", marginBottom: 10, transition: "all .15s", animation: urgent ? "blink-card-bg 2s ease-in-out infinite, blink-border 2s ease-in-out infinite" : "none" }}
+      onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}
+      onTouchStart={() => setActive(true)} onTouchEnd={() => setActive(false)} onTouchCancel={() => setActive(false)}
+    >
+      <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
+        <MarqueeText text={g.title} active={active} style={{ fontWeight: 600, fontSize: 14.5 }} />
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: 5, gap: 8 }}>
+          <span style={{ fontSize: 12, color: "var(--muted)", flexShrink: 0 }}>{g.server}</span>
+          <div style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
+            <div style={{ color: done ? "var(--accent-deep)" : "var(--accent)", fontWeight: 600 }}>이번 달 {streak}일 연속</div>
+            <div style={{ color: "var(--muted)" }}>
+              {resetIn.hh > 0
+                ? `초기화까지 ${resetIn.hh}시간 ${resetIn.mm}분`
+                : `초기화까지 ${resetIn.mm}분 ${resetIn.ss}초`}
+            </div>
+            {!yesterdayDone && (
+              <button
+                onClick={() => onToggle(g.id, gYesterday, true)}
+                style={{ background: "none", border: "none", padding: 0, marginTop: 2, fontSize: 10.5, color: "var(--accent2)", cursor: "pointer", textDecoration: "underline" }}
+              >
+                어제도 완료했어요
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <button onClick={() => onToggle(g.id, gToday, !done)} style={{
+        width: 40, borderRadius: 10, border: `1.5px solid ${done ? "var(--accent)" : "var(--border)"}`,
+        background: done ? "var(--accent)" : "transparent", color: done ? "var(--text)" : "var(--muted)",
+        display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", transition: "all .15s", flexShrink: 0,
+        animation: urgent ? "blink-border 2s ease-in-out infinite" : "none",
+      }} aria-label={done ? "완료 취소" : "완료 체크"}>
+        <IconCheck size={20} strokeWidth={3} />
+      </button>
+    </div>
+  );
+}
+
+/* ============================================================
+   GAMES TAB
+   ============================================================ */
+function GamesTab({ games, totalsByGame, monthTotalsByGame, onSave, onDelete }) {
+  const [editing, setEditing] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // game object pending deletion
+  const [filterMode, setFilterMode] = useState("active"); // "active" | "stopped"
+  const [jpyView, setJpyView] = useState({}); // gameId -> show as ¥ instead of ₩
+  const toggleCurrency = (id) => setJpyView(v => ({ ...v, [id]: !v[id] }));
+  const activeCount = games.filter(g => g.status === "진행").length;
+  const stoppedCount = games.filter(g => g.status === "중단").length;
+  const sorted = [...games].sort((a, b) => (a.status === b.status ? 0 : a.status === "진행" ? -1 : 1));
+  const visible = filterMode === "active" ? sorted.filter(g => g.status === "진행") : sorted.filter(g => g.status === "중단");
+  return (
+    <div style={{ paddingTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ display: "flex", background: "var(--border)", borderRadius: 10, padding: 3, gap: 2 }}>
+          <button
+            onClick={() => setFilterMode("active")}
+            style={{
+              padding: "6px 14px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12.5,
+              background: filterMode === "active" ? "var(--accent)" : "transparent",
+              color: filterMode === "active" ? "var(--text)" : "var(--muted)",
+              fontWeight: filterMode === "active" ? 600 : 400, transition: "all .15s",
+            }}
+          >
+            진행
+          </button>
+          <button
+            onClick={() => setFilterMode("stopped")}
+            style={{
+              padding: "6px 14px", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 12.5,
+              background: filterMode === "stopped" ? "var(--accent)" : "transparent",
+              color: filterMode === "stopped" ? "var(--text)" : "var(--muted)",
+              fontWeight: filterMode === "stopped" ? 600 : 400, transition: "all .15s",
+            }}
+          >
+            중단
+          </button>
+        </div>
+        <button onClick={() => setEditing({ id: crypto.randomUUID(), title: "", server: "한국", status: "진행", notes: "", resetHour: 0, startDate: todayISO(), endDate: null })} style={{ ...goldBtn, padding: "7px 11px", fontSize: 12.5 }}>
+          <IconPlus size={14} /> 추가
+        </button>
+      </div>
+      {games.length === 0 && <EmptyState text={"아직 등록된 게임이 없어요.\n'추가' 버튼을 눌러 게임을 추가해보세요."} />}
+      {visible.map(g => (
+        <div key={g.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 8, opacity: g.status === "중단" ? 0.55 : 1 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontWeight: 600, fontSize: 16, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{g.title}</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+              <button onClick={() => setEditing(g)} style={iconBtn}><IconPencil size={14} /></button>
+              <button onClick={() => setConfirmDelete(g)} style={iconBtn}><IconTrash size={14} /></button>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{g.notes || ""}</span>
+            <span
+              onClick={() => toggleCurrency(g.id)}
+              style={{ fontSize: 12.5, fontFamily: "ui-monospace, monospace", color: (monthTotalsByGame[g.id] || 0) > 0 ? "var(--accent2)" : "var(--accent)", fontWeight: 600, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
+            >
+              이번 달 {jpyView[g.id]
+                ? fmtMoney((monthTotalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
+                : fmtMoney(monthTotalsByGame[g.id] || 0, "₩")}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{g.server}</span>
+            <span
+              onClick={() => toggleCurrency(g.id)}
+              style={{ fontSize: 11.5, fontFamily: "ui-monospace, monospace", color: "var(--accent-deep)", fontWeight: (monthTotalsByGame[g.id] || 0) > 0 ? 700 : 400, cursor: "pointer" }}
+            >
+              총 {jpyView[g.id]
+                ? fmtMoney((totalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
+                : fmtMoney(totalsByGame[g.id] || 0, "₩")}
+            </span>
+          </div>
+        </div>
+      ))}
+      {editing && <GameEditModal game={editing} onClose={() => setEditing(null)} onSave={(g) => { onSave(g); setEditing(null); }} />}
+      {confirmDelete && (
+        <Modal onClose={() => setConfirmDelete(null)} hideClose>
+          <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 4px" }}>
+            <strong>{confirmDelete.title} ({confirmDelete.server})</strong>을(를) 삭제할까요?
+          </p>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 16px" }}>
+            결제 기록도 함께 삭제되며, 복구할 수 없어요.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { onDelete(confirmDelete.id); setConfirmDelete(null); }}
+              style={{ ...goldBtn, flex: 1, justifyContent: "center", background: "#D65B8A", color: "#FFFFFF" }}
+            >
+              삭제
+            </button>
+            <button onClick={() => setConfirmDelete(null)} style={{ ...ghostBtn, flex: 1, justifyContent: "center", display: "flex" }}>취소</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+function GameEditModal({ game, onClose, onSave }) {
+  const [form, setForm] = useState(game);
+  const isNew = !game.title;
+  return (
+    <Modal onClose={onClose} title={game.title ? "게임 정보 수정" : "새 게임 추가"}>
+      <Field label="타이틀"><input style={inputStyle} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} /></Field>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ width: 78, flexShrink: 0 }}>
+          <Field label="서버">
+            <select style={inputStyle} value={form.server} onChange={e => setForm({ ...form, server: e.target.value })}>
+              {["한국", "일본", "아시아", "글로벌"].map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Field label="계정 생성일">
+            <DateSelectKR value={form.startDate || ""} onChange={v => setForm({ ...form, startDate: v })} />
+          </Field>
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ width: 78, flexShrink: 0 }}>
+          <Field label="일일 초기화">
+            <div style={{ ...inputStyle, display: "flex", alignItems: "center", padding: "0 10px", height: 38, boxSizing: "border-box" }}>
+              <input type="text" inputMode="numeric" pattern="[0-9]*"
+                style={{ border: "none", background: "transparent", outline: "none", width: "100%", textAlign: "right", color: "var(--text)", fontSize: "inherit", fontFamily: "inherit", padding: "9px 0" }}
+                value={form.resetHour ?? 0}
+                onChange={e => {
+                  const n = Number(e.target.value.replace(/[^0-9]/g, ""));
+                  setForm({ ...form, resetHour: isNaN(n) ? 0 : Math.max(0, Math.min(23, n)) });
+                }} />
+              <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: 4, flexShrink: 0 }}>시</span>
+            </div>
+          </Field>
+        </div>
+        <div style={{ flex: 1 }}>
+          <Field label="상태">
+            <select style={{ ...inputStyle, opacity: isNew ? 0.6 : 1, cursor: isNew ? "not-allowed" : "auto", height: 38, boxSizing: "border-box" }} value={form.status} disabled={isNew}
+              onChange={e => setForm({ ...form, status: e.target.value })}>
+              <option value="진행">진행</option><option value="중단">중단</option>
+            </select>
+          </Field>
+        </div>
+      </div>
+      <Field label="비고"><input style={inputStyle} value={form.notes || ""} onChange={e => setForm({ ...form, notes: e.target.value })} /></Field>
+      <button disabled={!form.title.trim()} onClick={() => onSave({ ...form, totalSpend: form.totalSpend || 0 })}
+        style={{ ...goldBtn, width: "100%", justifyContent: "center", marginTop: 12, opacity: form.title.trim() ? 1 : 0.5 }}>저장</button>
+    </Modal>
+  );
+}
+
+/* ============================================================
+   PAYMENTS TAB
+   ============================================================ */
+function PaymentsTab({ games, payments, onAdd, onUpdate, onImportMany, importDates, importRunDates, onDelete }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
+  const [confirmDeletePayment, setConfirmDeletePayment] = useState(null);
+  const [filterGame, setFilterGame] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [showPlatformPicker, setShowPlatformPicker] = useState(false);
+  const [importPlatform, setImportPlatform] = useState(null); // "googlePlay" | "appStore"
+  const [importRows, setImportRows] = useState(null); // null = not importing
+  const [importError, setImportError] = useState(null);
+  const fileInputRef = useRef(null);
+
+  const startImport = (platform) => {
+    setShowPlatformPicker(false);
+    if (platform === "appStore") {
+      setImportError("앱스토어 가져오기는 아직 준비 중이에요. 실제 내보내기 파일 형식을 확인하면 연결해드릴게요.");
+      return;
+    }
+    setImportPlatform(platform);
+    fileInputRef.current?.click();
+  };
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const platform = importPlatform;
+    const lastDate = importDates[platform];
+    const reader = new FileReader();
+    reader.onload = () => {
+      const parser = platform === "payPay" ? parsePayPayCSV : parseGooglePlayJSON;
+      const { rows: allRows, error } = parser(String(reader.result), games);
+      if (error) { setImportError(error); setImportRows(null); return; }
+      const batchMaxDate = allRows.reduce((max, r) => (r.date > max ? r.date : max), "");
+      const rows = lastDate ? allRows.filter(r => r.date > lastDate) : allRows;
+      if (rows.length === 0) {
+        setImportError(lastDate
+          ? `${fmtDateLong(lastDate)} 이후 새 결제 내역이 없어요.`
+          : "가져올 결제 항목을 찾지 못했어요.");
+        setImportRows(null);
+      } else {
+        setImportError(null);
+        setImportRows({ rows, batchMaxDate, platform });
+      }
+    };
+    reader.onerror = () => setImportError("파일을 읽는 중 문제가 발생했어요.");
+    reader.readAsText(file);
+    e.target.value = "";
+  };
+  const sorted = [...payments].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const filtered = filterGame === "all" ? sorted : sorted.filter(p => p.gameId === filterGame);
+  const gameById = Object.fromEntries(games.map(g => [g.id, g]));
+  const titleCounts = {};
+  games.forEach(g => { titleCounts[g.title] = (titleCounts[g.title] || 0) + 1; });
+  const shown = filtered.slice(0, visibleCount);
+  return (
+    <div style={{ paddingTop: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <select style={{ ...inputStyle, flex: 1, padding: "7px 10px", fontSize: 12 }} value={filterGame}
+          onChange={e => { setFilterGame(e.target.value); setVisibleCount(20); }}>
+          <option value="all">전체</option>
+          {games.map(g => <option key={g.id} value={g.id}>{titleCounts[g.title] > 1 ? `${g.title} (${g.server})` : g.title}</option>)}
+        </select>
+        <button onClick={() => setShowPlatformPicker(true)} disabled={games.length === 0} style={{ ...ghostBtn, padding: "7px 11px", fontSize: 12.5, opacity: games.length === 0 ? 0.5 : 1, cursor: games.length === 0 ? "not-allowed" : "pointer" }}>가져오기</button>
+        <input ref={fileInputRef} type="file" accept="application/json,.json,text/csv,.csv" style={{ display: "none" }} onChange={handleFile} />
+        <button onClick={() => setShowForm(true)} disabled={games.length === 0} style={{ ...goldBtn, padding: "7px 11px", fontSize: 12.5, opacity: games.length === 0 ? 0.5 : 1, cursor: games.length === 0 ? "not-allowed" : "pointer" }}><IconPlus size={14} /> 추가</button>
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 4 }}>총 {filtered.length}건</div>
+      {games.length === 0 && <EmptyState text={"먼저 '게임' 탭에서 게임을 추가해주세요."} />}
+      {games.length > 0 && filtered.length === 0 && <EmptyState text="결제 기록이 없어요." />}
+      {shown.map((p, idx) => {
+        const g = gameById[p.gameId];
+        const year = p.date ? p.date.slice(0, 4) : "";
+        const month = p.date ? Number(p.date.slice(5, 7)) : null;
+        const day = p.date ? Number(p.date.slice(8, 10)) : null;
+        const prev = idx > 0 ? shown[idx - 1] : null;
+        const prevYear = prev?.date ? prev.date.slice(0, 4) : null;
+        const prevMonth = prev?.date ? Number(prev.date.slice(5, 7)) : null;
+        const showYearHeader = year && year !== prevYear;
+        const showMonthHeader = month !== null && (showYearHeader || month !== prevMonth);
+        return (
+          <React.Fragment key={p.id}>
+            {showYearHeader && (
+              <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", padding: "14px 2px 2px" }}>{year}년</div>
+            )}
+            {showMonthHeader && (
+              <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--muted)", padding: "4px 2px 6px" }}>{month}월</div>
+            )}
+            <div style={{ display: "flex", gap: 10, padding: "8px 2px", background: "var(--surface)", borderBottom: "1px solid var(--border)" }}>
+              <div style={{
+                width: 34, flexShrink: 0, textAlign: "center", background: "var(--surface2)",
+                border: "1px solid var(--border)", borderRadius: 8, padding: "6px 0", alignSelf: "flex-start",
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>{day ? `${day}일` : "-"}</div>
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 168 }}>{p.product || "(상품명 없음)"}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => setEditingPayment(p)} style={iconBtn}><IconPencil size={13} /></button>
+                    <button onClick={() => setConfirmDeletePayment(p)} style={iconBtn}><IconTrash size={13} /></button>
+                  </div>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3 }}>
+                  <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                    {g ? (titleCounts[g.title] > 1 ? `${g.title} (${g.server})` : g.title) : "삭제된 게임"}
+                  </span>
+                  <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 13, fontWeight: 700, color: "var(--accent-deep)" }}>
+                    {fmtMoney(p.amount, p.currency || (g ? CURRENCY[g.server] : "₩") || "₩")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </React.Fragment>
+        );
+      })}
+      {filtered.length > visibleCount && (
+        <button onClick={() => setVisibleCount(v => v + 20)} style={{ ...ghostBtn, width: "100%", justifyContent: "center", display: "flex", marginTop: 10 }}>
+          더보기 ({filtered.length - visibleCount}건 남음)
+        </button>
+      )}
+      {showForm && <PaymentFormModal games={games} initialGameId={filterGame !== "all" ? filterGame : undefined} onClose={() => setShowForm(false)} onSave={(p) => { onAdd(p); setShowForm(false); }} />}
+      {editingPayment && (
+        <PaymentFormModal
+          games={games}
+          editingPayment={editingPayment}
+          onClose={() => setEditingPayment(null)}
+          onSave={(p) => { onUpdate(p); setEditingPayment(null); }}
+        />
+      )}
+      {confirmDeletePayment && (
+        <Modal onClose={() => setConfirmDeletePayment(null)} hideClose>
+          <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 4px" }}>
+            <strong>{confirmDeletePayment.product || "(상품명 없음)"}</strong> 기록을 삭제할까요?
+          </p>
+          <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 16px" }}>
+            삭제된 기록은 복구할 수 없어요.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => { onDelete(confirmDeletePayment.id); setConfirmDeletePayment(null); }}
+              style={{ ...goldBtn, flex: 1, justifyContent: "center", background: "#D65B8A", color: "#FFFFFF" }}
+            >
+              삭제
+            </button>
+            <button onClick={() => setConfirmDeletePayment(null)} style={{ ...ghostBtn, flex: 1, justifyContent: "center", display: "flex" }}>취소</button>
+          </div>
+        </Modal>
+      )}
+      {importError && (
+        <Modal onClose={() => setImportError(null)} hideClose>
+          <p style={{ fontSize: 13.5, color: "var(--text)" }}>{importError}</p>
+          <button onClick={() => setImportError(null)} style={{ ...goldBtn, width: "100%", justifyContent: "center", marginTop: 8 }}>확인</button>
+        </Modal>
+      )}
+      {showPlatformPicker && (
+        <Modal onClose={() => setShowPlatformPicker(false)} title="어디서 가져올까요?">
+          <button onClick={() => startImport("googlePlay")} style={{ ...ghostBtn, background: "var(--surface)", width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", padding: "12px 14px", marginBottom: 8 }}>
+            <span>Google Play</span>
+            <span style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5 }}>
+              <div style={{ color: "var(--accent-deep)" }}>{fmtDateLong(importRunDates.googlePlay)}</div>
+              <div style={{ color: "var(--accent)" }}>{importDates.googlePlay ? `${fmtDateLong(importDates.googlePlay)}까지 가져옴` : "-"}</div>
+            </span>
+          </button>
+          <button onClick={() => startImport("payPay")} style={{ ...ghostBtn, background: "var(--surface)", width: "100%", justifyContent: "space-between", display: "flex", alignItems: "center", padding: "12px 14px", marginBottom: 8 }}>
+            <span>PayPay</span>
+            <span style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5 }}>
+              <div style={{ color: "var(--accent-deep)" }}>{fmtDateLong(importRunDates.payPay)}</div>
+              <div style={{ color: "var(--accent)" }}>{importDates.payPay ? `${fmtDateLong(importDates.payPay)}까지 가져옴` : "-"}</div>
+            </span>
+          </button>
+          <button onClick={() => startImport("appStore")} style={{ ...ghostBtn, background: "var(--surface)", width: "100%", justifyContent: "space-between", display: "flex", padding: "12px 14px", opacity: 0.6 }}>
+            <span>App Store</span>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>준비 중</span>
+          </button>
+        </Modal>
+      )}
+      {importRows && (
+        <ImportPreviewModal
+          rows={importRows.rows} games={games} existingPayments={payments}
+          onClose={() => setImportRows(null)}
+          onConfirm={(finalRows) => { onImportMany(importRows.platform, finalRows, importRows.batchMaxDate); setImportRows(null); }}
+        />
+      )}
+    </div>
+  );
+}
+function PaymentFormModal({ games, initialGameId, editingPayment, onClose, onSave }) {
+  const active = games.filter(g => g.status === "진행");
+  const titleCounts = {};
+  games.forEach(g => { titleCounts[g.title] = (titleCounts[g.title] || 0) + 1; });
+  const gameById = Object.fromEntries(games.map(g => [g.id, g]));
+  const initialId = editingPayment?.gameId || initialGameId || active[0]?.id || games[0]?.id || "";
+  const [form, setForm] = useState({
+    gameId: initialId,
+    date: editingPayment?.date || todayISO(),
+    product: editingPayment?.product || "",
+    amount: editingPayment ? String(editingPayment.amount) : "",
+    currency: editingPayment?.currency || CURRENCY[gameById[initialId]?.server] || "₩",
+  });
+  return (
+    <Modal onClose={onClose} title={editingPayment ? "결제 기록 수정" : "결제 기록 추가"}>
+      <Field label="게임">
+        <select style={inputStyle} value={form.gameId} onChange={e => {
+          const g = gameById[e.target.value];
+          setForm({ ...form, gameId: e.target.value, currency: CURRENCY[g?.server] || form.currency });
+        }}>
+          {games.map(g => <option key={g.id} value={g.id}>{titleCounts[g.title] > 1 ? `${g.title} (${g.server})` : g.title}</option>)}
+        </select>
+      </Field>
+      <Field label="일자"><DateSelectKR value={form.date} onChange={v => setForm({ ...form, date: v })} /></Field>
+      <Field label="상품명"><input style={inputStyle} value={form.product} onChange={e => setForm({ ...form, product: e.target.value })} placeholder="예: 월간 패키지" /></Field>
+      <Field label="금액">
+        <div style={{ display: "flex", gap: 8 }}>
+          <select style={{ ...inputStyle, width: 68, flexShrink: 0 }} value={form.currency} onChange={e => setForm({ ...form, currency: e.target.value })}>
+            <option value="₩">₩</option>
+            <option value="¥">¥</option>
+          </select>
+          <input type="number" style={inputStyle} value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} placeholder="0" />
+        </div>
+      </Field>
+      <button disabled={!form.gameId || !form.amount} onClick={() => onSave({ id: editingPayment?.id || crypto.randomUUID(), ...form, amount: Number(form.amount) })}
+        style={{ ...goldBtn, width: "100%", justifyContent: "center", marginTop: 12, opacity: (!form.gameId || !form.amount) ? 0.5 : 1 }}>저장</button>
+    </Modal>
+  );
+}
+
+function ImportPreviewModal({ rows: initialRows, games, existingPayments, onClose, onConfirm }) {
+  const titleCounts = {};
+  games.forEach(g => { titleCounts[g.title] = (titleCounts[g.title] || 0) + 1; });
+  const existingKeys = new Set(existingPayments.map(p => `${p.gameId}|${p.date}|${p.amount}|${p.currency || ""}`));
+  const [rows, setRows] = useState(initialRows.map(r => {
+    const isDup = r.gameId && existingKeys.has(`${r.gameId}|${r.date}|${r.amount}|${r.currency || ""}`);
+    return { ...r, isDup, include: !!r.gameId && !isDup };
+  }));
+  const matchedCount = rows.filter(r => r.include && r.gameId).length;
+  const unmatchedCount = rows.filter(r => !r.gameId).length;
+  const dupCount = rows.filter(r => r.isDup).length;
+
+  const updateRow = (key, patch) => {
+    setRows(prev => prev.map(r => r.key === key ? { ...r, ...patch } : r));
+  };
+
+  const handleConfirm = () => {
+    const finalRows = rows.filter(r => r.include && r.gameId).map(r => ({
+      gameId: r.gameId, date: r.date, product: r.product, amount: r.amount, currency: r.currency,
+    }));
+    onConfirm(finalRows);
+  };
+
+  return (
+    <Modal onClose={onClose} title="구글 플레이 결제 내역 가져오기">
+      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 10px" }}>
+        총 {rows.length}건 중 {matchedCount}건 선택됨
+        {unmatchedCount > 0 ? ` · 매칭 안 됨 ${unmatchedCount}건` : ""}
+        {dupCount > 0 ? ` · 이미 등록됨 ${dupCount}건(제외됨)` : ""}
+      </p>
+      <div style={{ maxHeight: 320, overflowY: "auto" }} className="app-scroll">
+        {rows.map(r => (
+          <div key={r.key} style={{
+            background: "var(--surface)", border: `1px solid ${r.gameId ? "var(--border)" : "#D65B8A"}`, borderRadius: 8, padding: "8px 10px", marginBottom: 6,
+            opacity: r.include ? 1 : 0.45,
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 12.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.product}</span>
+                  {r.isDup && (
+                    <span style={{ fontSize: 10, color: "var(--muted)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", flexShrink: 0 }}>
+                      이미 등록됨
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>{fmtDate(r.date)} · {r.currency}{r.amount.toLocaleString()}</div>
+              </div>
+              <input type="checkbox" checked={r.include} onChange={e => updateRow(r.key, { include: e.target.checked })} style={{ flexShrink: 0 }} />
+            </div>
+            <select
+              style={{ ...inputStyle, marginTop: 6, padding: "5px 8px", fontSize: 12 }}
+              value={r.gameId}
+              onChange={e => updateRow(r.key, { gameId: e.target.value, include: !!e.target.value })}
+            >
+              <option value="">— 게임 선택 (원본: {r.rawName}) —</option>
+              {games.map(g => <option key={g.id} value={g.id}>{titleCounts[g.title] > 1 ? `${g.title} (${g.server})` : g.title}</option>)}
+            </select>
+          </div>
+        ))}
+      </div>
+      <button onClick={handleConfirm} disabled={matchedCount === 0}
+        style={{ ...goldBtn, width: "100%", justifyContent: "center", marginTop: 12, opacity: matchedCount === 0 ? 0.5 : 1 }}>
+        {matchedCount}건 가져오기
+      </button>
+    </Modal>
+  );
+}
+
+/* ============================================================
+   STATS TAB (hand-rolled charts, no chart library)
+   ============================================================ */
+function ProportionBar({ items, formatFn }) {
+  const total = items.reduce((s, x) => s + x.value, 0) || 1;
+  const palette = ["var(--accent)", "var(--accent2)", "var(--accent-deep)", "var(--jpy)", "#E0A85A", "#6FBF73", "#D6698A", "#8A6FBF"];
+  return (
+    <div>
+      <div style={{ display: "flex", width: "100%", height: 16, borderRadius: 8, overflow: "hidden" }}>
+        {items.map((x, i) => (
+          <div key={i} style={{ width: `${(x.value / total * 100).toFixed(2)}%`, background: palette[i % palette.length] }} />
+        ))}
+      </div>
+      <div style={{ marginTop: 10 }}>
+        {items.map((x, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, padding: "4px 0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, flex: 1 }}>
+              <span style={{ width: 8, height: 8, borderRadius: 4, background: palette[i % palette.length], flexShrink: 0 }} />
+              <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>{x.name}</span>
+            </div>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0, fontFamily: "ui-monospace, monospace" }}>
+              <span>{formatFn(x.value)}</span>
+              <span style={{ color: "var(--muted)" }}>({Math.round(x.value / total * 100)}%)</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+function LineChartSimple({ series, tooltipSeries, labels, colors, seriesNames }) {
+  const displaySeries = tooltipSeries || series;
+  const [hoverIdx, setHoverIdx] = useState(null);
+  const [mousePos, setMousePos] = useState(null);
+  const w = 300, h = 140, pad = 8;
+  const allVals = series.flat();
+  const max = Math.max(1, ...allVals);
+  const stepX = (w - pad * 2) / Math.max(1, labels.length - 1);
+  const pointsBySeries = series.map(arr => arr.map((v, i) => ({ x: pad + i * stepX, y: h - pad - (v / max) * (h - pad * 2) })));
+
+  const handleMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const mx = (clientX - rect.left) * (w / rect.width);
+    const my = (clientY - rect.top) * ((h + 20) / rect.height);
+    let idx = Math.round((mx - pad) / stepX);
+    idx = Math.max(0, Math.min(labels.length - 1, idx));
+    setHoverIdx(idx);
+    setMousePos({ x: mx, y: my });
+  };
+
+  const tipLines = hoverIdx !== null ? [`${labels[hoverIdx].slice(0, 4)}년 ${Number(labels[hoverIdx].slice(5))}월`, ...displaySeries.map((arr, si) => `${seriesNames[si]}${arr[hoverIdx].toLocaleString()}`)] : [];
+  const tipW = 74, tipLineH = 12, tipPad = 5;
+  const tipH = tipPad * 2 + tipLines.length * tipLineH;
+  let tipX = mousePos ? mousePos.x + 10 : 0;
+  if (tipX + tipW > w) tipX = (mousePos ? mousePos.x : 0) - tipW - 10;
+  let tipY = mousePos ? mousePos.y - tipH - 10 : 0;
+  if (tipY < 0) tipY = mousePos ? mousePos.y + 12 : 0;
+
+  return (
+    <div>
+      <svg width="100%" viewBox={`0 0 ${w} ${h + 20}`} style={{ display: "block" }}
+        onMouseMove={handleMove} onMouseLeave={() => { setHoverIdx(null); setMousePos(null); }}
+        onTouchStart={handleMove} onTouchMove={handleMove} onTouchEnd={() => { setHoverIdx(null); setMousePos(null); }}
+      >
+        {series.map((arr, si) => (
+          <polyline key={si} points={pointsBySeries[si].map(p => `${p.x},${p.y}`).join(" ")} fill="none" stroke={colors[si]} strokeWidth="2" />
+        ))}
+        {/* legend, top-right, stacked */}
+        {seriesNames.map((name, si) => (
+          <g key={si}>
+            <circle cx={w - 20} cy={8 + si * 11} r={3} fill={colors[si]} />
+            <text x={w - 13} y={11 + si * 11} fontSize="9" fill="var(--muted)">{name}</text>
+          </g>
+        ))}
+        {hoverIdx !== null && (
+          <g>
+            <line x1={pad + hoverIdx * stepX} y1={0} x2={pad + hoverIdx * stepX} y2={h} stroke="var(--border)" strokeWidth="1" />
+            {pointsBySeries.map((pts, si) => (
+              <circle key={si} cx={pts[hoverIdx].x} cy={pts[hoverIdx].y} r={3} fill={colors[si]} />
+            ))}
+            <rect x={tipX} y={tipY} width={tipW} height={tipH} rx="4" fill="var(--surface2)" stroke="var(--border)" strokeWidth="0.5" />
+            {tipLines.map((line, li) => (
+              <text key={li} x={tipX + tipPad} y={tipY + tipPad + (li + 0.8) * tipLineH} fontSize="9" fill={li === 0 ? "var(--muted)" : "var(--text)"}>{line}</text>
+            ))}
+          </g>
+        )}
+        {labels.map((l, i) => (i % 2 === 0 ? (
+          <text key={i} x={pad + i * stepX} y={h + 14} fontSize="9" fill="var(--muted)" textAnchor="middle">{Number(l.slice(5))}월</text>
+        ) : null))}
+      </svg>
+    </div>
+  );
+}
+function StatsTab({ games, payments, questLog, nativeTotalsByGame, today }) {
+  const titleCounts = {};
+  games.forEach(g => { titleCounts[g.title] = (titleCounts[g.title] || 0) + 1; });
+  const labelFor = (g) => (titleCounts[g.title] > 1 ? `${g.title} (${g.server})` : g.title);
+  const krw = games.map(g => ({ name: labelFor(g), value: nativeTotalsByGame.krw[g.id] || 0 })).filter(x => x.value > 0).sort((a, b) => b.value - a.value).slice(0, 8);
+  const jpy = games.map(g => ({ name: labelFor(g), value: nativeTotalsByGame.jpy[g.id] || 0 })).filter(x => x.value > 0).sort((a, b) => b.value - a.value).slice(0, 8);
+  const monthMap = {};
+  payments.forEach(p => {
+    const mk = monthKey(p.date); if (!mk) return;
+    const g = games.find(gg => gg.id === p.gameId);
+    const cur = p.currency || (g ? CURRENCY[g.server] : "₩") || "₩";
+    if (!monthMap[mk]) monthMap[mk] = { month: mk, krw: 0, jpy: 0 };
+    monthMap[mk][cur === "¥" ? "jpy" : "krw"] += Number(p.amount || 0);
+  });
+  const chartYear = today.slice(0, 4);
+  const monthly = Array.from({ length: 12 }, (_, i) => {
+    const mk = `${chartYear}-${pad2(i + 1)}`;
+    return monthMap[mk] || { month: mk, krw: 0, jpy: 0 };
+  });
+  const totalKrw = krw.reduce((s, x) => s + x.value, 0);
+  const totalJpy = jpy.reduce((s, x) => s + x.value, 0);
+
+  return (
+    <div style={{ paddingTop: 16, paddingBottom: 10 }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 10 }}>
+        <div style={{ fontSize: 11, color: "var(--muted)" }}>총 누적 과금 (₩ 환산)</div>
+        <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 20, fontWeight: 700, marginTop: 4, color: "var(--accent-deep)" }}>
+          ₩{(totalKrw + totalJpy * JPY_TO_KRW_RATE).toLocaleString()}
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 10, marginBottom: 18 }}>
+        <div style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>누적 과금 (원화)</div>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18, fontWeight: 700, marginTop: 4 }}>₩{totalKrw.toLocaleString()}</div>
+        </div>
+        <div style={{ flex: 1, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px" }}>
+          <div style={{ fontSize: 11, color: "var(--muted)" }}>누적 과금 (엔화)</div>
+          <div style={{ fontFamily: "ui-monospace, monospace", fontSize: 18, fontWeight: 700, marginTop: 4 }}>¥{totalJpy.toLocaleString()}</div>
+        </div>
+      </div>
+
+      {games.length > 0 && (<>
+        <SectionTitle icon={<IconWallet size={14} />} text="게임별 총 과금 비율 (₩)" />
+        <ChartCard><ProportionBar items={krw} formatFn={(v) => `₩${v.toLocaleString()}`} /></ChartCard>
+
+        {jpy.length > 0 && (<>
+          <SectionTitle icon={<IconWallet size={14} />} text="게임별 총 과금 비율 (¥)" />
+          <ChartCard><ProportionBar items={jpy} formatFn={(v) => `¥${v.toLocaleString()}`} /></ChartCard>
+        </>)}
+
+        <SectionTitle icon={<IconBarChart size={14} />} text={`월별 과금 추이 (${chartYear}년)`} />
+        <ChartCard>
+          <LineChartSimple
+            series={[monthly.map(m => m.krw), monthly.map(m => m.jpy * JPY_TO_KRW_RATE)]}
+            tooltipSeries={[monthly.map(m => m.krw), monthly.map(m => m.jpy)]}
+            labels={monthly.map(m => m.month)}
+            colors={["var(--accent)", "var(--jpy)"]}
+            seriesNames={["₩", "¥"]}
+          />
+        </ChartCard>
+      </>)}
+    </div>
+  );
+}
+
+/* ============================================================
+   SHARED UI PIECES
+   ============================================================ */
+function SectionTitle({ icon, text }) {
+  return <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--muted)", fontSize: 12.5, margin: "18px 2px 8px" }}>{icon}<span>{text}</span></div>;
+}
+function ChartCard({ children }) {
+  return <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "10px 8px 4px" }}>{children}</div>;
+}
+function AuthScreen({ onAuthed }) {
+  const [mode, setMode] = useState("login");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [loginId, setLoginId] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [check, setCheck] = useState({}); // { loginId: {text,good}, email: {...}, password: {...}, password2: {...} }
+  const [fieldError, setFieldError] = useState(null);
+  const [signupDone, setSignupDone] = useState(null); // email string once signed up
+
+  const refs = { loginId: useRef(null), email: useRef(null), password: useRef(null), password2: useRef(null) };
+
+  const setCheckFor = (field, text, good) => setCheck(c => ({ ...c, [field]: { text, good } }));
+  const clearCheckFor = (field) => setCheck(c => ({ ...c, [field]: null }));
+
+  const focusInvalid = (field, msg) => {
+    setError(msg);
+    setFieldError(field);
+    setTimeout(() => refs[field].current?.focus(), 0);
+  };
+
+  const onFieldInput = (field, setter) => (e) => {
+    setter(e.target.value);
+    if (error) setError("");
+    if (fieldError === field) setFieldError(null);
+  };
+
+  const onPasswordFocus = (field, setter) => () => setter("");
+
+  const checkLoginIdBlur = async () => {
+    const v = loginId.trim().toLowerCase();
+    if (!v) return clearCheckFor("loginId");
+    if (!ID_PATTERN.test(v)) return setCheckFor("loginId", "아이디는 영소문자 및 숫자로 4~20자 이내로 입력해주세요.", false);
+    const { data: taken, error: e } = await sb.rpc("is_login_id_taken", { p_login_id: v });
+    if (e) return clearCheckFor("loginId");
+    setCheckFor("loginId", taken ? "이미 사용 중인 아이디예요." : "사용할 수 있는 아이디예요.", !taken);
+  };
+
+  const checkEmailBlur = async () => {
+    const v = email.trim();
+    if (!v) return clearCheckFor("email");
+    if (!EMAIL_PATTERN.test(v)) return setCheckFor("email", "이메일 형식이 올바르지 않아요. 다시 확인해주세요.", false);
+    const { data: taken, error: e } = await sb.rpc("is_email_taken", { p_email: v });
+    if (e) return clearCheckFor("email");
+    setCheckFor("email", taken ? "이미 가입된 이메일이에요." : "사용할 수 있는 이메일이에요.", !taken);
+  };
+
+  const checkPasswordBlur = () => {
+    if (!password) return clearCheckFor("password");
+    if (password.length < 8) return setCheckFor("password", "비밀번호는 8자 이상 입력해주세요.", false);
+    setCheckFor("password", "사용할 수 있는 비밀번호예요.", true);
+  };
+
+  const checkPassword2Blur = () => {
+    if (!password2) return clearCheckFor("password2");
+    if (!password) return setCheckFor("password2", "비밀번호를 먼저 입력해주세요.", false);
+    if (password !== password2) return setCheckFor("password2", "비밀번호가 일치하지 않아요.", false);
+    setCheckFor("password2", "비밀번호가 일치해요.", true);
+  };
+
+  const doLogin = async () => {
+    const id = loginId.trim().toLowerCase();
+    if (!id) return focusInvalid("loginId", "아이디를 입력해주세요.");
+    if (!password) return focusInvalid("password", "비밀번호를 입력해주세요.");
+    setBusy(true);
+    const GENERIC_FAIL = "아이디 또는 비밀번호가 올바르지 않아요.";
+    const { data: userEmail, error: lookupErr } = await sb.rpc("get_email_for_login_id", { p_login_id: id });
+    if (lookupErr || !userEmail) { setBusy(false); return setError(GENERIC_FAIL); }
+    const { error: signInErr } = await sb.auth.signInWithPassword({ email: userEmail, password });
+    setBusy(false);
+    if (signInErr) return setError(GENERIC_FAIL);
+    onAuthed();
+  };
+
+  const doSignup = async () => {
+    const id = loginId.trim().toLowerCase();
+    const em = email.trim();
+    if (!id) return focusInvalid("loginId", "아이디를 입력해주세요.");
+    if (!ID_PATTERN.test(id)) return focusInvalid("loginId", "아이디는 영소문자 및 숫자로 4~20자 이내로 입력해주세요.");
+    if (!em) return focusInvalid("email", "이메일을 입력해주세요.");
+    if (!EMAIL_PATTERN.test(em)) return focusInvalid("email", "이메일 형식이 올바르지 않아요. 다시 확인해주세요.");
+    if (!password) return focusInvalid("password", "비밀번호를 입력해주세요.");
+    if (password.length < 8) return focusInvalid("password", "비밀번호는 8자 이상 입력해주세요.");
+    if (!password2) return focusInvalid("password2", "비밀번호 확인을 입력해주세요.");
+    if (password !== password2) return focusInvalid("password2", "비밀번호가 일치하지 않아요.");
+
+    setBusy(true);
+    const { data: idTaken } = await sb.rpc("is_login_id_taken", { p_login_id: id });
+    if (idTaken) { setBusy(false); return focusInvalid("loginId", "이미 사용 중인 아이디예요."); }
+    const { data: emailTaken } = await sb.rpc("is_email_taken", { p_email: em });
+    if (emailTaken) { setBusy(false); return focusInvalid("email", "이미 가입된 이메일이에요."); }
+
+    const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id } } });
+    setBusy(false);
+    if (signUpErr) return setError(signUpErr.message);
+    setSignupDone(em);
+  };
+
+  const inputStyleLocal = { width: "100%", padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 8, fontSize: 14, background: "var(--surface)", color: "var(--text)", outline: "none" };
+  const errorInputStyle = { ...inputStyleLocal, background: "#FBE7EE", borderColor: "var(--danger)" };
+  const labelStyle = { display: "block", fontSize: 12, color: "var(--muted)", margin: "12px 0 5px" };
+  const checkStyle = (good) => ({ fontSize: 11.5, marginTop: 4, minHeight: 15, lineHeight: 1.3, color: good ? "var(--accent-deep)" : "var(--danger)" });
+
+  if (signupDone) {
+    return (
+      <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", padding: "100px 16px 16px", colorScheme: "light" }}>
+        <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 20 }}>가입 완료</div>
+        <div style={{ fontSize: 12.5, background: "var(--surface2)", color: "var(--accent-deep)", padding: "10px 12px", borderRadius: 8, lineHeight: 1.5 }}>
+          가입됐어요! 이메일({signupDone})로 인증 링크가 갔다면 확인해주세요. 인증 후 바로 로그인해보세요.
+        </div>
+        <button onClick={() => { setSignupDone(null); setMode("login"); }} style={{ width: "100%", marginTop: 20, padding: "11px 0", border: "none", borderRadius: 10, background: "var(--accent-deep)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+          로그인하러 가기
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", padding: "100px 16px 16px", colorScheme: "light" }}>
+      <div style={{
+        background: "linear-gradient(135deg, var(--accent), var(--accent-deep))",
+        borderRadius: 16, padding: "22px 14px", marginBottom: 24, textAlign: "center",
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 800, color: "#FFFFFF", letterSpacing: 0.3, lineHeight: 1.35 }}>
+          일퀘가챠 하기 좋은 날
+        </div>
+      </div>
+
+      <div style={{ display: "flex", background: "var(--border)", borderRadius: 10, padding: 3, marginBottom: 18 }}>
+        <button onClick={() => { setMode("login"); setError(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "login" ? "var(--accent)" : "transparent", color: mode === "login" ? "var(--text)" : "var(--muted)", fontWeight: mode === "login" ? 600 : 400 }}>로그인</button>
+        <button onClick={() => { setMode("signup"); setError(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "signup" ? "var(--accent)" : "transparent", color: mode === "signup" ? "var(--text)" : "var(--muted)", fontWeight: mode === "signup" ? 600 : 400 }}>회원가입</button>
+      </div>
+
+        <label style={labelStyle}>아이디</label>
+        <input
+          ref={refs.loginId} style={fieldError === "loginId" ? errorInputStyle : inputStyleLocal} autoComplete="username"
+          value={loginId} onChange={onFieldInput("loginId", setLoginId)}
+          onBlur={mode === "signup" ? checkLoginIdBlur : undefined}
+          onFocus={() => { if (mode === "signup") clearCheckFor("loginId"); }}
+        />
+        {mode === "signup" && <div style={checkStyle(check.loginId?.good)}>{check.loginId?.text || ""}</div>}
+
+        {mode === "signup" && (
+          <>
+            <label style={labelStyle}>이메일</label>
+            <input
+              ref={refs.email} style={fieldError === "email" ? errorInputStyle : inputStyleLocal} type="email" autoComplete="email"
+              value={email} onChange={onFieldInput("email", setEmail)} onBlur={checkEmailBlur} onFocus={() => clearCheckFor("email")}
+            />
+            <div style={checkStyle(check.email?.good)}>{check.email?.text || ""}</div>
+          </>
+        )}
+
+        <label style={labelStyle}>비밀번호</label>
+        <input
+          ref={refs.password} style={fieldError === "password" ? errorInputStyle : inputStyleLocal} type="password"
+          autoComplete={mode === "login" ? "current-password" : "new-password"}
+          value={password} onChange={onFieldInput("password", setPassword)}
+          onFocus={() => { onPasswordFocus("password", setPassword)(); if (mode === "signup") clearCheckFor("password"); }}
+          onBlur={mode === "signup" ? checkPasswordBlur : undefined}
+        />
+        {mode === "signup" && <div style={checkStyle(check.password?.good)}>{check.password?.text || ""}</div>}
+        {mode === "login" && <div style={{ minHeight: 15, marginTop: 4 }} />}
+
+        {mode === "signup" && (
+          <>
+            <label style={labelStyle}>비밀번호 확인</label>
+            <input
+              ref={refs.password2} style={fieldError === "password2" ? errorInputStyle : inputStyleLocal} type="password" autoComplete="new-password"
+              value={password2} onChange={onFieldInput("password2", setPassword2)}
+              onFocus={() => { setPassword2(""); clearCheckFor("password2"); }}
+              onBlur={checkPassword2Blur}
+            />
+            <div style={checkStyle(check.password2?.good)}>{check.password2?.text || ""}</div>
+          </>
+        )}
+
+        {mode === "login" && (
+          <div style={{ textAlign: "right", marginTop: 8 }}>
+            <button style={{ background: "none", border: "none", padding: 0, fontSize: 11.5, color: "var(--accent-deep)", cursor: "pointer", textDecoration: "underline" }}>
+              비밀번호를 잊으셨나요?
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={() => (mode === "login" ? doLogin() : doSignup())} disabled={busy}
+          style={{ width: "100%", marginTop: 20, padding: "11px 0", border: "none", borderRadius: 10, background: "var(--accent-deep)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
+        >
+          {busy ? "처리 중…" : (mode === "login" ? "로그인" : "가입하기")}
+        </button>
+
+        {error && (
+          <div style={{ fontSize: 12.5, marginTop: 12, padding: "10px 12px", borderRadius: 8, lineHeight: 1.5, background: "#FBE7EE", color: "var(--danger)" }}>
+            {error}
+          </div>
+        )}
+    </div>
+  );
+}
+
+function EmptyState({ text }) {
+  return <div style={{ textAlign: "center", color: "var(--muted)", fontSize: 13, padding: "50px 20px", whiteSpace: "pre-line" }}>{text}</div>;
+}
+function Field({ label, children }) {
+  return <div style={{ marginBottom: 12 }}><div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 5 }}>{label}</div>{children}</div>;
+}
+function DateSelectKR({ value, onChange }) {
+  const now = new Date();
+  const [y, m, d] = value ? value.split("-").map(Number) : [null, null, null];
+  const years = Array.from({ length: now.getFullYear() - 2014 + 1 }, (_, i) => now.getFullYear() + 1 - i);
+  const daysInMonth = (yy, mm) => (yy && mm) ? new Date(yy, mm, 0).getDate() : 31;
+  const dayCount = daysInMonth(y, m);
+
+  const emit = (ny, nm, nd) => {
+    if (ny && nm && nd) {
+      onChange(`${ny}-${pad2(nm)}-${pad2(Math.min(nd, daysInMonth(ny, nm)))}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", gap: 6 }}>
+      <select style={{ ...inputStyle, flex: 1.3 }} value={y || ""} onChange={e => emit(Number(e.target.value) || null, m, d)}>
+        <option value="">년</option>
+        {years.map(yy => <option key={yy} value={yy}>{yy}년</option>)}
+      </select>
+      <select style={{ ...inputStyle, flex: 1 }} value={m || ""} onChange={e => emit(y, Number(e.target.value) || null, d)}>
+        <option value="">월</option>
+        {Array.from({ length: 12 }, (_, i) => i + 1).map(mm => <option key={mm} value={mm}>{mm}월</option>)}
+      </select>
+      <select style={{ ...inputStyle, flex: 1 }} value={d || ""} onChange={e => emit(y, m, Number(e.target.value) || null)}>
+        <option value="">일</option>
+        {Array.from({ length: dayCount }, (_, i) => i + 1).map(dd => <option key={dd} value={dd}>{dd}일</option>)}
+      </select>
+    </div>
+  );
+}
+function Modal({ title, onClose, children, hideClose, disableOverlayClose }) {
+  return (
+    <div style={{ position: "absolute", inset: 0, background: "rgba(10,11,15,.5)", display: "flex", alignItems: "flex-end", zIndex: 20 }} onClick={disableOverlayClose ? undefined : onClose}>
+      <div className="app-scroll" style={{ background: "var(--surface2)", borderTop: "1px solid var(--border)", borderRadius: "16px 16px 0 0", padding: 18, width: "100%", maxHeight: "85%", overflowY: "auto" }} onClick={e => e.stopPropagation()}>
+        {(title || !hideClose) && (
+          <div style={{ display: "flex", justifyContent: title ? "space-between" : "flex-end", alignItems: "center", marginBottom: 14 }}>
+            {title && <div style={{ fontWeight: 700, fontSize: 15 }}>{title}</div>}
+            {!hideClose && <button onClick={onClose} style={iconBtn}><IconX size={16} /></button>}
+          </div>
+        )}
+        {children}
+      </div>
+    </div>
+  );
+}
+function TabBar({ tab, setTab }) {
+  const items = [
+    { id: "today", label: "일일", Icon: IconList },
+    { id: "games", label: "게임", Icon: IconController },
+    { id: "payments", label: "과금", Icon: IconWallet },
+    { id: "stats", label: "통계", Icon: IconBarChart },
+  ];
+  return (
+    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", background: "var(--accent)", borderTop: "1px solid var(--border)", padding: "8px 4px 10px" }}>
+      {items.map(it => {
+        const active = tab === it.id;
+        return (
+          <button key={it.id} onClick={() => setTab(it.id)} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", color: active ? "var(--on-accent)" : "var(--on-accent-muted)", fontSize: 10.5, padding: "4px 0" }}>
+            <it.Icon size={18} strokeWidth={active ? 2.4 : 1.8} />
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+const inputStyle = { width: "100%", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "9px 10px", color: "var(--text)", fontSize: 13.5, outline: "none" };
+const goldBtn = { display: "flex", alignItems: "center", gap: 5, background: "var(--accent)", color: "var(--text)", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" };
+const ghostBtn = { background: "none", border: "1px solid var(--border)", color: "var(--muted)", borderRadius: 8, padding: "7px 10px", fontSize: 12, cursor: "pointer" };
+const iconBtn = { background: "none", border: "none", color: "var(--muted)", cursor: "pointer", padding: 4, display: "flex", alignItems: "center" };
+
+/* ============================================================
+   MAIN APP (persistence via the `db` capability)
+   ============================================================ */
+function GameLedger({ userId }) {
+  const [games, setGames] = useState([]);
+  const [gamesLoaded, setGamesLoaded] = useState(false);
+  const [payments, setPayments] = useState([]);
+  const [questLog, setQuestLog] = useState([]);
+  const [username, setUsername] = useState("");
+  const [importDates, setImportDates] = useState({ googlePlay: null, appStore: null, payPay: null });
+  const [importRunDates, setImportRunDates] = useState({ googlePlay: null, appStore: null, payPay: null });
+  const [tab, setTab] = useState("today");
+  const [loaded, setLoaded] = useState(false);
+  const [toast, setToast] = useState(null);
+  const showToast = useCallback((msg) => { setToast(msg); setTimeout(() => setToast(null), 1800); }, []);
+
+  // --- 게임 목록: Supabase games 테이블 (사용자별) ---
+  const dbRowToGame = (row) => ({
+    id: row.id, title: row.title, server: row.server, status: row.status,
+    notes: row.notes || "", resetHour: row.reset_hour ?? 0, startDate: row.start_date, endDate: row.end_date,
+  });
+  const gameToDbRow = (g) => ({
+    id: g.id, user_id: userId, title: g.title, server: g.server, status: g.status,
+    notes: g.notes || "", reset_hour: g.resetHour ?? 0, start_date: g.startDate || null, end_date: g.endDate || null,
+  });
+
+  const loadGames = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await sb.from("games").select("*").eq("user_id", userId).order("created_at", { ascending: true });
+    if (!error && data) setGames(data.map(dbRowToGame));
+    setGamesLoaded(true);
+  }, [userId]);
+
+  useEffect(() => { loadGames(); }, [loadGames]);
+
+  // --- 결제 기록: Supabase payments 테이블 (사용자별) ---
+  const dbRowToPayment = (row) => ({
+    id: row.id, gameId: row.game_id, date: row.date, product: row.product || "",
+    amount: Number(row.amount), currency: row.currency || "₩",
+  });
+  const paymentToDbRow = (p) => ({
+    id: p.id, user_id: userId, game_id: p.gameId, date: p.date,
+    product: p.product || "", amount: p.amount, currency: p.currency || "₩",
+  });
+
+  const loadPayments = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await sb.from("payments").select("*").eq("user_id", userId).order("date", { ascending: false });
+    if (!error && data) setPayments(data.map(dbRowToPayment));
+  }, [userId]);
+
+  useEffect(() => { loadPayments(); }, [loadPayments]);
+
+  // --- 일일퀘스트 체크 기록: Supabase quest_log 테이블 (사용자별) ---
+  const dbRowToQuest = (row) => ({ gameId: row.game_id, date: row.date, done: row.done });
+
+  const loadQuestLog = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await sb.from("quest_log").select("*").eq("user_id", userId);
+    if (!error && data) setQuestLog(data.map(dbRowToQuest));
+  }, [userId]);
+
+  useEffect(() => { loadQuestLog(); }, [loadQuestLog]);
+
+  const toggleQuest = useCallback(async (gameId, date, done) => {
+    const { error } = await sb.from("quest_log").upsert(
+      { user_id: userId, game_id: gameId, date, done },
+      { onConflict: "user_id,game_id,date" }
+    );
+    if (error) { showToast("저장 실패: " + error.message); return; }
+    setQuestLog(qs => [...qs.filter(q => !(q.gameId === gameId && q.date === date)), { gameId, date, done }]);
+    showToast(done ? "완료 체크!" : "체크 해제");
+  }, [userId, showToast]);
+
+  const addPayment = useCallback(async (payment) => {
+    const { error } = await sb.from("payments").insert(paymentToDbRow(payment));
+    if (error) { showToast("저장 실패: " + error.message); return; }
+    setPayments(ps => [payment, ...ps]);
+    showToast("결제 기록 추가됨");
+  }, [userId, showToast]);
+
+  const updatePayment = useCallback(async (payment) => {
+    const { error } = await sb.from("payments").update(paymentToDbRow(payment)).eq("id", payment.id).eq("user_id", userId);
+    if (error) { showToast("수정 실패: " + error.message); return; }
+    setPayments(ps => ps.map(p => p.id === payment.id ? payment : p));
+    showToast("결제 기록 수정됨");
+  }, [userId, showToast]);
+
+  const deletePayment = useCallback(async (id) => {
+    const { error } = await sb.from("payments").delete().eq("id", id).eq("user_id", userId);
+    if (error) { showToast("삭제 실패: " + error.message); return; }
+    setPayments(ps => ps.filter(p => p.id !== id));
+  }, [userId, showToast]);
+
+  const importPayments = useCallback(async (platform, rows, batchMaxDate) => {
+    const existingKeys = new Set(payments.map(p => `${p.gameId}|${p.date}|${p.amount}|${p.currency || ""}`));
+    const toAdd = rows
+      .filter(r => !existingKeys.has(`${r.gameId}|${r.date}|${r.amount}|${r.currency || ""}`))
+      .map(r => ({ id: crypto.randomUUID(), gameId: r.gameId, date: r.date, product: r.product, amount: r.amount, currency: r.currency }));
+    if (toAdd.length > 0) {
+      const { error } = await sb.from("payments").insert(toAdd.map(paymentToDbRow));
+      if (error) { showToast("가져오기 실패: " + error.message); return; }
+      setPayments(ps => [...toAdd, ...ps]);
+    }
+    const prevDate = importDates[platform];
+    const nextDate = batchMaxDate && (!prevDate || batchMaxDate > prevDate) ? batchMaxDate : prevDate;
+    const newImportDates = { ...importDates, [platform]: nextDate };
+    const newImportRunDates = { ...importRunDates, [platform]: todayISO() };
+    await sb.from("profiles").update({ import_dates: newImportDates, import_run_dates: newImportRunDates }).eq("id", userId);
+    setImportDates(newImportDates);
+    setImportRunDates(newImportRunDates);
+    showToast(`${toAdd.length}건 가져옴`);
+  }, [payments, importDates, importRunDates, userId, showToast]);
+
+  const saveGame = useCallback(async (game) => {
+    const isNew = !games.some(g => g.id === game.id);
+    const row = gameToDbRow(game);
+    if (isNew) {
+      const { error } = await sb.from("games").insert(row);
+      if (error) { showToast("저장 실패: " + error.message); return; }
+      setGames(gs => [...gs, game]);
+    } else {
+      const { error } = await sb.from("games").update(row).eq("id", game.id).eq("user_id", userId);
+      if (error) { showToast("저장 실패: " + error.message); return; }
+      setGames(gs => gs.map(g => g.id === game.id ? game : g));
+    }
+    showToast("저장됨");
+  }, [games, userId, showToast]);
+
+  const deleteGame = useCallback(async (id) => {
+    const { error } = await sb.from("games").delete().eq("id", id).eq("user_id", userId);
+    if (error) { showToast("삭제 실패: " + error.message); return; }
+    setGames(gs => gs.filter(g => g.id !== id));
+    // 결제/일일퀘스트는 DB의 외래키(on delete cascade)가 자동으로 같이 지워줌
+    setPayments(ps => ps.filter(p => p.gameId !== id));
+    setQuestLog(qs => qs.filter(q => q.gameId !== id));
+    showToast("게임 삭제됨");
+  }, [userId, showToast]);
+
+  // --- 프로필(닉네임, 가져오기 날짜 정보): Supabase profiles 테이블 ---
+  const loadProfile = useCallback(async () => {
+    if (!userId) { setLoaded(true); return; }
+    const { data, error } = await sb.from("profiles").select("nickname, import_dates, import_run_dates").eq("id", userId).single();
+    if (!error && data) {
+      setUsername(data.nickname || "");
+      setImportDates(data.import_dates || { googlePlay: null, appStore: null, payPay: null });
+      setImportRunDates(data.import_run_dates || { googlePlay: null, appStore: null, payPay: null });
+    }
+    setLoaded(true);
+  }, [userId]);
+
+  useEffect(() => { loadProfile(); }, [loadProfile]);
+
+  const updateProfile = useCallback(async (patch) => {
+    const dbPatch = {};
+    if (patch.nickname !== undefined) dbPatch.nickname = patch.nickname;
+    if (patch.importDates !== undefined) dbPatch.import_dates = patch.importDates;
+    if (patch.importRunDates !== undefined) dbPatch.import_run_dates = patch.importRunDates;
+    const { error } = await sb.from("profiles").update(dbPatch).eq("id", userId);
+    if (error) { showToast("저장 실패: " + error.message); return; }
+    if (patch.nickname !== undefined) setUsername(patch.nickname);
+    if (patch.importDates !== undefined) setImportDates(patch.importDates);
+    if (patch.importRunDates !== undefined) setImportRunDates(patch.importRunDates);
+  }, [userId, showToast]);
+
+  const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
+  const [nicknameDraft, setNicknameDraft] = useState("");
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  useEffect(() => {
+    if (loaded && !username) { setNicknameDraft(""); setShowNicknamePrompt(true); }
+  }, [loaded]);
+
+  const dailyGames = useMemo(() => games.filter(g => g.status === "진행"), [games]);
+  const gameByIdAll = useMemo(() => Object.fromEntries(games.map(g => [g.id, g])), [games]);
+  const paymentToKRW = useCallback((p) => {
+    const g = gameByIdAll[p.gameId];
+    const cur = p.currency || (g ? CURRENCY[g.server] : "₩") || "₩";
+    return cur === "¥" ? Number(p.amount || 0) * JPY_TO_KRW_RATE : Number(p.amount || 0);
+  }, [gameByIdAll]);
+  const totalsByGame = useMemo(() => {
+    const map = {}; games.forEach(g => { map[g.id] = 0; });
+    payments.forEach(p => { map[p.gameId] = (map[p.gameId] || 0) + paymentToKRW(p); });
+    return map;
+  }, [games, payments, paymentToKRW]);
+  const monthTotalsByGame = useMemo(() => {
+    const map = {}; games.forEach(g => { map[g.id] = 0; });
+    const thisMonth = monthKey(todayISO());
+    payments.forEach(p => {
+      if (monthKey(p.date) === thisMonth) map[p.gameId] = (map[p.gameId] || 0) + paymentToKRW(p);
+    });
+    return map;
+  }, [games, payments, paymentToKRW]);
+  const nativeTotalsByGame = useMemo(() => {
+    const krw = {}, jpy = {};
+    games.forEach(g => { krw[g.id] = 0; jpy[g.id] = 0; });
+    payments.forEach(p => {
+      const g = gameByIdAll[p.gameId];
+      const cur = p.currency || (g ? CURRENCY[g.server] : "₩") || "₩";
+      const bucket = cur === "¥" ? jpy : krw;
+      bucket[p.gameId] = (bucket[p.gameId] || 0) + Number(p.amount || 0);
+    });
+    return { krw, jpy };
+  }, [games, payments, gameByIdAll]);
+  const today = todayISO();
+
+  if (!loaded) {
+    return <div style={{ background: "var(--bg)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", colorScheme: "light" }}>불러오는 중…</div>;
+  }
+
+  return (
+    <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", colorScheme: "light" }}>
+      <Header today={today} tab={tab} username={username} onSetUsername={(name) => updateProfile({ nickname: name })} onLogoutClick={() => setConfirmLogout(true)} />
+      <div className="app-scroll" style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden", padding: "0 16px 90px" }}>
+        {tab === "today" && (
+          <TodayTab dailyGames={dailyGames} hasGames={games.length > 0} questLog={questLog} onToggle={toggleQuest} />
+        )}
+        {tab === "games" && (
+          <GamesTab games={games} totalsByGame={totalsByGame} monthTotalsByGame={monthTotalsByGame}
+            onSave={saveGame}
+            onDelete={deleteGame}
+          />
+        )}
+        {tab === "payments" && (
+          <PaymentsTab games={games} payments={payments}
+            onAdd={addPayment}
+            onUpdate={updatePayment}
+            importDates={importDates}
+            importRunDates={importRunDates}
+            onImportMany={importPayments}
+            onDelete={deletePayment}
+          />
+        )}
+        {tab === "stats" && <StatsTab games={games} payments={payments} questLog={questLog} nativeTotalsByGame={nativeTotalsByGame} today={today} />}
+      </div>
+      <TabBar tab={tab} setTab={setTab} />
+      {toast && (
+        <div style={{ position: "absolute", bottom: 78, left: "50%", transform: "translateX(-50%)", background: "var(--surface2)", border: "1px solid var(--border)", color: "var(--text)", padding: "8px 16px", borderRadius: 999, fontSize: 13, boxShadow: "0 4px 16px rgba(0,0,0,.4)" }}>
+          {toast}
+        </div>
+      )}
+      {showNicknamePrompt && (
+        <Modal onClose={() => setShowNicknamePrompt(false)} disableOverlayClose>
+          <p style={{ fontSize: 14, color: "var(--text)", margin: "0 0 12px", fontWeight: 700 }}>
+            닉네임을 설정해주세요.
+          </p>
+          <input
+            autoFocus maxLength={12} value={nicknameDraft} onChange={e => setNicknameDraft(e.target.value.slice(0, 12))}
+            style={inputStyle} placeholder="닉네임 입력 (최대 12자)"
+            onKeyDown={e => { if (e.key === "Enter" && nicknameDraft.trim()) { updateProfile({ nickname: nicknameDraft.trim() }); setShowNicknamePrompt(false); } }}
+          />
+          <button
+            disabled={!nicknameDraft.trim()}
+            onClick={() => { updateProfile({ nickname: nicknameDraft.trim() }); setShowNicknamePrompt(false); }}
+            style={{ ...goldBtn, width: "100%", justifyContent: "center", marginTop: 12, opacity: !nicknameDraft.trim() ? 0.5 : 1 }}
+          >
+            저장
+          </button>
+        </Modal>
+      )}
+      {confirmLogout && (
+        <Modal onClose={() => setConfirmLogout(false)} hideClose>
+          <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 16px" }}>
+            <strong>로그아웃 하시겠어요?</strong>
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => { setConfirmLogout(false); sb.auth.signOut(); }} style={{ ...goldBtn, flex: 1, justifyContent: "center", background: "#D65B8A", color: "#FFFFFF" }}>로그아웃</button>
+            <button onClick={() => setConfirmLogout(false)} style={{ ...ghostBtn, flex: 1, justifyContent: "center", display: "flex" }}>취소</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function AppRoot() {
+  const [session, setSession] = useState(undefined); // undefined = 확인 중, null = 비로그인, object = 로그인됨
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: sub } = sb.auth.onAuthStateChange((_event, s) => setSession(s));
+    return () => sub.subscription.unsubscribe();
+  }, []);
+  if (session === undefined) {
+    return <div style={{ background: "var(--bg)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", colorScheme: "light" }}>불러오는 중…</div>;
+  }
+  if (!session) return <AuthScreen onAuthed={() => {}} />;
+  return <GameLedger userId={session.user.id} />;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<AppRoot />);
+</script>
+</body>
+</html>
