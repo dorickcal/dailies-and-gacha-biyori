@@ -1207,7 +1207,7 @@ function AuthScreen({ onAuthed }) {
 
         <label style={labelStyle}>아이디</label>
         <input
-          ref={refs.loginId} style={fieldError === "loginId" ? errorInputStyle : inputStyleLocal} autoComplete="username"
+          ref={refs.loginId} style={fieldError === "loginId" ? errorInputStyle : inputStyleLocal} autoComplete={mode === "login" ? "username" : "off"}
           value={loginId} onChange={onFieldInput("loginId", setLoginId)}
           onBlur={mode === "signup" ? checkLoginIdBlur : undefined}
           onFocus={() => { if (mode === "signup") clearCheckFor("loginId"); }}
@@ -1218,7 +1218,7 @@ function AuthScreen({ onAuthed }) {
           <>
             <label style={labelStyle}>이메일</label>
             <input
-              ref={refs.email} style={fieldError === "email" ? errorInputStyle : inputStyleLocal} type="email" autoComplete="email"
+              ref={refs.email} style={fieldError === "email" ? errorInputStyle : inputStyleLocal} type="email" autoComplete="off"
               value={email} onChange={onFieldInput("email", setEmail)} onBlur={checkEmailBlur} onFocus={() => clearCheckFor("email")}
             />
             <div style={checkStyle(check.email?.good)}>{check.email?.text || ""}</div>
