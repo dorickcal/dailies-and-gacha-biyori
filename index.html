@@ -1164,7 +1164,7 @@ function AuthScreen({ onAuthed }) {
     const { data: emailTaken } = await sb.rpc("is_email_taken", { p_email: em });
     if (emailTaken) { setBusy(false); return focusInvalid("email", "이미 가입된 이메일이에요."); }
 
-    const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id }, emailRedirectTo: window.location.href } });
+    const { error: signUpErr } = await sb.auth.signUp({ email: em, password, options: { data: { login_id: id }, emailRedirectTo: "https://dorickcal.github.io/dailies-and-gacha-biyori/" } });
     setBusy(false);
     if (signUpErr) return setError(signUpErr.message);
     setSignupDone(em);
@@ -1180,7 +1180,7 @@ function AuthScreen({ onAuthed }) {
       <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", padding: "100px 16px 16px", colorScheme: "light" }}>
         <div style={{ fontSize: 19, fontWeight: 700, marginBottom: 20 }}>가입 완료</div>
         <div style={{ fontSize: 12.5, background: "var(--surface2)", color: "var(--accent-deep)", padding: "10px 12px", borderRadius: 8, lineHeight: 1.5 }}>
-          가입됐어요! 이메일({signupDone})로 인증 링크가 갔다면 확인해주세요. 인증 후 바로 로그인해보세요.
+          가입 신청이 완료됐어요! 입력하신 이메일({signupDone})로 인증 링크를 보냈으니, 인증 후 로그인해보세요.
         </div>
         <button onClick={() => { setSignupDone(null); setMode("login"); }} style={{ width: "100%", marginTop: 20, padding: "11px 0", border: "none", borderRadius: 10, background: "var(--accent-deep)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
           로그인하러 가기
@@ -1201,8 +1201,8 @@ function AuthScreen({ onAuthed }) {
       </div>
 
       <div style={{ display: "flex", background: "var(--border)", borderRadius: 10, padding: 3, marginBottom: 18 }}>
-        <button onClick={() => { setMode("login"); setError(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "login" ? "var(--accent)" : "transparent", color: mode === "login" ? "var(--text)" : "var(--muted)", fontWeight: mode === "login" ? 600 : 400 }}>로그인</button>
-        <button onClick={() => { setMode("signup"); setError(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "signup" ? "var(--accent)" : "transparent", color: mode === "signup" ? "var(--text)" : "var(--muted)", fontWeight: mode === "signup" ? 600 : 400 }}>회원가입</button>
+        <button onClick={() => { setMode("login"); setError(""); setLoginId(""); setEmail(""); setPassword(""); setPassword2(""); setCheck({}); setFieldError(null); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "login" ? "var(--accent)" : "transparent", color: mode === "login" ? "var(--text)" : "var(--muted)", fontWeight: mode === "login" ? 600 : 400 }}>로그인</button>
+        <button onClick={() => { setMode("signup"); setError(""); setLoginId(""); setEmail(""); setPassword(""); setPassword2(""); setCheck({}); setFieldError(null); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13, background: mode === "signup" ? "var(--accent)" : "transparent", color: mode === "signup" ? "var(--text)" : "var(--muted)", fontWeight: mode === "signup" ? 600 : 400 }}>회원가입</button>
       </div>
 
         <label style={labelStyle}>아이디</label>
