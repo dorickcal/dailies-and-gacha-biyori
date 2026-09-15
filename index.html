@@ -1700,6 +1700,10 @@ function GameLedger({ userId }) {
       games: games.map(gameToDbRow).map(({ user_id, ...rest }) => rest),
       payments: payments.map(paymentToDbRow).map(({ user_id, ...rest }) => rest),
       questLog: questLog.map(q => ({ game_id: q.gameId, date: q.date, done: q.done })),
+      // importBackup이 읽는 것과 같은 top-level 키 이름(아티팩트 백업 형식과 동일)으로 내보내서,
+      // 이 백업 파일을 나중에 어디로 가져오기 하든 "가져오기 진행 상황"이 유지되게 한다.
+      importDates,
+      importRunDates,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -1711,7 +1715,7 @@ function GameLedger({ userId }) {
     a.remove();
     URL.revokeObjectURL(url);
     showToast("백업 파일을 내려받았어요");
-  }, [games, payments, questLog, username, theme]);
+  }, [games, payments, questLog, username, theme, importDates, importRunDates]);
 
   const importBackup = useCallback(async (file) => {
     let data;
@@ -1795,9 +1799,33 @@ function GameLedger({ userId }) {
     }
 
     if (data.profile?.nickname) await updateProfile({ nickname: data.profile.nickname });
+
+    // 가져오기 진행 상황(importDates/importRunDates)도 백업 파일에 있으면 같이 복원한다.
+    // 이 값은 games/payments와 달리 profiles 테이블에 별도로 저장되는데, 예전에는 여기서
+    // data.importDates를 아예 읽지 않아서 아티팩트 백업을 가져와도 "구글 플레이/페이페이 어디까지
+    // 가져왔는지" 정보가 소실됐었다 (2026-09-15). 기존 값을 무조건 덮어쓰지 않고, 플랫폼별로
+    // 둘 중 더 나중 날짜를 남긴다 — 어느 쪽이 더 앞서 있는지 알 수 없기 때문.
+    if (data.importDates && typeof data.importDates === "object") {
+      const mergedImportDates = { ...importDates };
+      Object.entries(data.importDates).forEach(([platform, date]) => {
+        if (date && (!mergedImportDates[platform] || date > mergedImportDates[platform])) {
+          mergedImportDates[platform] = date;
+        }
+      });
+      const mergedImportRunDates = { ...importRunDates };
+      if (data.importRunDates && typeof data.importRunDates === "object") {
+        Object.entries(data.importRunDates).forEach(([platform, date]) => {
+          if (date && (!mergedImportRunDates[platform] || date > mergedImportRunDates[platform])) {
+            mergedImportRunDates[platform] = date;
+          }
+        });
+      }
+      await updateProfile({ importDates: mergedImportDates, importRunDates: mergedImportRunDates });
+    }
+
     await Promise.all([loadGames(), loadPayments(), loadQuestLog()]);
     showToast(`복원 완료 (게임 ${gameRows.length}개 · 새 결제 ${newPayRows.length}건 · 일일퀘스트 ${questRows.length}건)`);
-  }, [userId, showToast, loadGames, loadPayments, loadQuestLog, updateProfile]);
+  }, [userId, showToast, loadGames, loadPayments, loadQuestLog, updateProfile, importDates, importRunDates]);
 
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState("");
