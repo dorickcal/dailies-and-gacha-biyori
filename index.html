@@ -129,13 +129,10 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /* ============================================================
    THEMES (사용자 선택형 팔레트)
-   ※ 각 게임의 "공식 브랜드 컬러"가 별도로 공개되어 있지 않아,
-     게임을 대표하는 이미지를 참고해 구성한 팬메이드 팔레트입니다.
    ============================================================ */
 const THEMES = {
   default: {
     name: "기본 팔레트",
-    desc: "라벤더 & 하늘색",
     vars: {
       "--bg": "#F8F7FC", "--surface": "#FFFFFF", "--surface2": "#EFEAFA", "--border": "#E1DCEF",
       "--accent": "#B6AAD5", "--accent2": "#00A9E0", "--accent2-light": "#9FE3F5", "--accent-deep": "#6A4C93", "--jpy": "#5C7CA6",
@@ -145,32 +142,11 @@ const THEMES = {
   },
   bluearchive: {
     name: "블루 아카이브",
-    desc: "스카이블루 & 네이비",
     vars: {
       "--bg": "#EFF6FF", "--surface": "#FFFFFF", "--surface2": "#E3EFFC", "--border": "#CFE0F5",
       "--accent": "#8FC1F2", "--accent2": "#2F6FE0", "--accent2-light": "#BBDBFF", "--accent-deep": "#1E4B8C", "--jpy": "#5C7CA6",
       "--text": "#10213A", "--muted": "#3B5876", "--danger": "#E0527A",
       "--on-accent": "#10213A", "--on-accent-muted": "#2C4870",
-    },
-  },
-  trickcal: {
-    name: "트릭컬 리바이브",
-    desc: "캔디 퍼플 & 옐로",
-    vars: {
-      "--bg": "#FBF5FF", "--surface": "#FFFFFF", "--surface2": "#F3E6FB", "--border": "#E9D5F5",
-      "--accent": "#E3AEEA", "--accent2": "#FFC93C", "--accent2-light": "#FFE9A8", "--accent-deep": "#7C3AA6", "--jpy": "#8C6FB0",
-      "--text": "#2E1A3D", "--muted": "#6B4A82", "--danger": "#E0568A",
-      "--on-accent": "#2E1A3D", "--on-accent-muted": "#5A3D70",
-    },
-  },
-  nikke: {
-    name: "승리의 여신: 니케",
-    desc: "택티컬 레드 & 블랙",
-    vars: {
-      "--bg": "#F5F2F2", "--surface": "#FFFFFF", "--surface2": "#F0E4E6", "--border": "#E3D3D6",
-      "--accent": "#E58A9B", "--accent2": "#D6273F", "--accent2-light": "#F3A9B4", "--accent-deep": "#7A1220", "--jpy": "#55606B",
-      "--text": "#1A1418", "--muted": "#6B4550", "--danger": "#D6273F",
-      "--on-accent": "#1A1418", "--on-accent-muted": "#4A2C34",
     },
   },
 };
@@ -1162,46 +1138,31 @@ function SettingsTab({ theme, onSetTheme, onExport, onImport, onLogoutClick }) {
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{t.name}</div>
-                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{t.desc}</div>
               </div>
               {active && <IconCheck size={16} style={{ color: "var(--accent-deep)", flexShrink: 0 }} />}
             </button>
           );
         })}
       </div>
-      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
-        ※ 게임별 테마는 공식 브랜드 컬러가 아닌, 각 게임의 이미지를 참고해 구성한 팬메이드 팔레트예요.
-      </div>
 
-      <SectionTitle icon={<IconWallet size={14} />} text="데이터 관리" />
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px" }}>
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>백업</div>
-        <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>
-          현재 게임/과금/일일퀘스트 기록을 JSON 파일로 내려받아요.
-        </div>
+      <SectionTitle icon={<IconWallet size={14} />} text="데이터" />
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px", display: "flex", flexDirection: "column", gap: 8 }}>
         <button onClick={onExport} style={{ ...goldBtn, width: "100%", justifyContent: "center" }}>
-          <IconDownload size={14} /> 백업 파일 내려받기
+          <IconDownload size={14} /> 내보내기
         </button>
-
-        <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
-
-        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>복원</div>
-        <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>
-          백업 파일을 불러와 데이터를 복원해요. 같은 항목이 있으면 덮어쓰고, 없으면 추가돼요.
-        </div>
         <input ref={fileInputRef} type="file" accept="application/json" onChange={onFileChosen} style={{ display: "none" }} />
         <button onClick={pickFile} style={{ ...ghostBtn, width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: 5 }}>
-          <IconUpload size={14} /> 백업 파일 선택
+          <IconUpload size={14} /> 가져오기
         </button>
       </div>
 
-      <SectionTitle icon={<IconLogout size={14} />} text="계정" />
       <button
         onClick={onLogoutClick}
         style={{
           width: "100%", padding: "11px 0", border: "1px solid var(--danger)", borderRadius: 10,
           background: "var(--surface)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600,
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+          marginTop: 18,
         }}
       >
         <IconLogout size={15} /> 로그아웃
