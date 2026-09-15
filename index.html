@@ -8,7 +8,7 @@
   :root {
     --bg: #F8F7FC; --surface: #FFFFFF; --surface2: #EFEAFA; --border: #E1DCEF;
     --accent: #B6AAD5; --accent2: #00A9E0; --accent2-light: #9FE3F5; --accent-deep: #6A4C93; --jpy: #5C7CA6;
-    --text: #000000; --muted: #4A3F63;
+    --text: #000000; --muted: #4A3F63; --danger: #D65B8A;
     --on-accent: #000000; --on-accent-muted: #4A3F63;
   }
   * { box-sizing: border-box; }
@@ -73,6 +73,8 @@ const IconController = (p) => <Icon {...p} d="M6 12h4m-2-2v4M15 11h.01M18 13h.01
 const IconDownload = (p) => <Icon {...p} d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />;
 const IconUpload = (p) => <Icon {...p} d="M12 21V9m0 0l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />;
 const IconLogout = (p) => <Icon {...p} d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" />;
+const IconSettings = (p) => <Icon {...p} d="M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />;
+const IconPalette = (p) => <Icon {...p} d="M12 22a10 10 0 110-20 8 8 0 018 8c0 2.2-1.8 4-4 4h-1.6c-.7 0-1.3.6-1.3 1.3 0 .3.1.6.3.8.5.5.8 1.2.8 1.9 0 1.6-1.4 3-3.2 3z M6.5 11.5a1 1 0 100-2 1 1 0 000 2z M9.5 7.5a1 1 0 100-2 1 1 0 000 2z M14.5 7.5a1 1 0 100-2 1 1 0 000 2z M17.5 11.5a1 1 0 100-2 1 1 0 000 2z" />;
 
 /* ============================================================
    SEED DATA
@@ -124,6 +126,61 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ID_PATTERN = /^[a-z0-9_]{4,20}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/* ============================================================
+   THEMES (사용자 선택형 팔레트)
+   ※ 각 게임의 "공식 브랜드 컬러"가 별도로 공개되어 있지 않아,
+     게임을 대표하는 이미지를 참고해 구성한 팬메이드 팔레트입니다.
+   ============================================================ */
+const THEMES = {
+  default: {
+    name: "기본 팔레트",
+    desc: "라벤더 & 하늘색",
+    vars: {
+      "--bg": "#F8F7FC", "--surface": "#FFFFFF", "--surface2": "#EFEAFA", "--border": "#E1DCEF",
+      "--accent": "#B6AAD5", "--accent2": "#00A9E0", "--accent2-light": "#9FE3F5", "--accent-deep": "#6A4C93", "--jpy": "#5C7CA6",
+      "--text": "#000000", "--muted": "#4A3F63", "--danger": "#D65B8A",
+      "--on-accent": "#000000", "--on-accent-muted": "#4A3F63",
+    },
+  },
+  bluearchive: {
+    name: "블루 아카이브",
+    desc: "스카이블루 & 네이비",
+    vars: {
+      "--bg": "#EFF6FF", "--surface": "#FFFFFF", "--surface2": "#E3EFFC", "--border": "#CFE0F5",
+      "--accent": "#8FC1F2", "--accent2": "#2F6FE0", "--accent2-light": "#BBDBFF", "--accent-deep": "#1E4B8C", "--jpy": "#5C7CA6",
+      "--text": "#10213A", "--muted": "#3B5876", "--danger": "#E0527A",
+      "--on-accent": "#10213A", "--on-accent-muted": "#2C4870",
+    },
+  },
+  trickcal: {
+    name: "트릭컬 리바이브",
+    desc: "캔디 퍼플 & 옐로",
+    vars: {
+      "--bg": "#FBF5FF", "--surface": "#FFFFFF", "--surface2": "#F3E6FB", "--border": "#E9D5F5",
+      "--accent": "#E3AEEA", "--accent2": "#FFC93C", "--accent2-light": "#FFE9A8", "--accent-deep": "#7C3AA6", "--jpy": "#8C6FB0",
+      "--text": "#2E1A3D", "--muted": "#6B4A82", "--danger": "#E0568A",
+      "--on-accent": "#2E1A3D", "--on-accent-muted": "#5A3D70",
+    },
+  },
+  nikke: {
+    name: "승리의 여신: 니케",
+    desc: "택티컬 레드 & 블랙",
+    vars: {
+      "--bg": "#F5F2F2", "--surface": "#FFFFFF", "--surface2": "#F0E4E6", "--border": "#E3D3D6",
+      "--accent": "#E58A9B", "--accent2": "#D6273F", "--accent2-light": "#F3A9B4", "--accent-deep": "#7A1220", "--jpy": "#55606B",
+      "--text": "#1A1418", "--muted": "#6B4550", "--danger": "#D6273F",
+      "--on-accent": "#1A1418", "--on-accent-muted": "#4A2C34",
+    },
+  },
+};
+const THEME_LIST = Object.keys(THEMES).map(id => ({ id, ...THEMES[id] }));
+function applyTheme(themeId) {
+  const t = THEMES[themeId] || THEMES.default;
+  const root = document.documentElement.style;
+  Object.entries(t.vars).forEach(([k, v]) => root.setProperty(k, v));
+}
+
 const toKRW = (amount, server) => server === "한국" ? amount : amount * JPY_TO_KRW_RATE;
 const pad2 = (n) => String(n).padStart(2, "0");
 const todayISO = () => {
@@ -316,9 +373,9 @@ function MarqueeText({ text, active, style }) {
 /* ============================================================
    HEADER
    ============================================================ */
-const TAB_TITLES = { today: "일일", games: "게임", payments: "과금", stats: "통계" };
+const TAB_TITLES = { today: "일일", games: "게임", payments: "과금", stats: "통계", settings: "설정" };
 const GREETING_PATTERNS = ["{name}, 어서와!", "{name}, 반가워!", "{name}, 오늘도 달려보자!"];
-function Header({ today, tab, username, onSetUsername, onLogoutClick }) {
+function Header({ today, tab, username, onSetUsername }) {
   const [clock, setClock] = useState(new Date());
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(username || "");
@@ -365,9 +422,6 @@ function Header({ today, tab, username, onSetUsername, onLogoutClick }) {
         <div style={{ textAlign: "right", color: "var(--on-accent-muted)", position: "absolute", top: 14, right: 20 }}>
           <div style={{ fontSize: 12 }}>{dateLabel} · {weekday}요일</div>
           <div style={{ fontSize: 12, fontFamily: "ui-monospace, monospace", marginTop: 3 }}>{clockLabel}</div>
-          <button onClick={onLogoutClick} style={{ background: "none", border: "none", padding: 0, marginTop: 12, cursor: "pointer", fontSize: 11.5, color: "var(--on-accent-muted)", textDecoration: "underline" }}>
-            로그아웃
-          </button>
         </div>
       </div>
     </div>
@@ -1062,6 +1116,118 @@ function StatsTab({ games, payments, questLog, nativeTotalsByGame, today }) {
 }
 
 /* ============================================================
+   SETTINGS TAB
+   ============================================================ */
+function SettingsTab({ theme, onSetTheme, onExport, onImport, onLogoutClick }) {
+  const fileInputRef = useRef(null);
+  const [pendingFile, setPendingFile] = useState(null);
+  const [importing, setImporting] = useState(false);
+
+  const pickFile = () => fileInputRef.current?.click();
+  const onFileChosen = (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (f) setPendingFile(f);
+    e.target.value = "";
+  };
+  const confirmImport = async () => {
+    if (!pendingFile) return;
+    setImporting(true);
+    await onImport(pendingFile);
+    setImporting(false);
+    setPendingFile(null);
+  };
+
+  return (
+    <div style={{ paddingTop: 16, paddingBottom: 10 }}>
+      <SectionTitle icon={<IconPalette size={14} />} text="테마" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {THEME_LIST.map(t => {
+          const active = theme === t.id;
+          const v = t.vars;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onSetTheme(t.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+                background: active ? "var(--surface2)" : "var(--surface)",
+                border: `1.5px solid ${active ? "var(--accent-deep)" : "var(--border)"}`,
+                borderRadius: 12, padding: "10px 12px", cursor: "pointer",
+              }}
+            >
+              <div style={{
+                width: 34, height: 34, borderRadius: 10, flexShrink: 0,
+                background: `linear-gradient(135deg, ${v["--accent"]}, ${v["--accent-deep"]})`,
+                border: "1px solid var(--border)",
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{t.name}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{t.desc}</div>
+              </div>
+              {active && <IconCheck size={16} style={{ color: "var(--accent-deep)", flexShrink: 0 }} />}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8, lineHeight: 1.5 }}>
+        ※ 게임별 테마는 공식 브랜드 컬러가 아닌, 각 게임의 이미지를 참고해 구성한 팬메이드 팔레트예요.
+      </div>
+
+      <SectionTitle icon={<IconWallet size={14} />} text="데이터 관리" />
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>백업</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>
+          현재 게임/과금/일일퀘스트 기록을 JSON 파일로 내려받아요.
+        </div>
+        <button onClick={onExport} style={{ ...goldBtn, width: "100%", justifyContent: "center" }}>
+          <IconDownload size={14} /> 백업 파일 내려받기
+        </button>
+
+        <div style={{ height: 1, background: "var(--border)", margin: "14px 0" }} />
+
+        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>복원</div>
+        <div style={{ fontSize: 11.5, color: "var(--muted)", lineHeight: 1.5, marginBottom: 10 }}>
+          백업 파일을 불러와 데이터를 복원해요. 같은 항목이 있으면 덮어쓰고, 없으면 추가돼요.
+        </div>
+        <input ref={fileInputRef} type="file" accept="application/json" onChange={onFileChosen} style={{ display: "none" }} />
+        <button onClick={pickFile} style={{ ...ghostBtn, width: "100%", justifyContent: "center", display: "flex", alignItems: "center", gap: 5 }}>
+          <IconUpload size={14} /> 백업 파일 선택
+        </button>
+      </div>
+
+      <SectionTitle icon={<IconLogout size={14} />} text="계정" />
+      <button
+        onClick={onLogoutClick}
+        style={{
+          width: "100%", padding: "11px 0", border: "1px solid var(--danger)", borderRadius: 10,
+          background: "var(--surface)", color: "var(--danger)", fontSize: 13.5, fontWeight: 600,
+          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+        }}
+      >
+        <IconLogout size={15} /> 로그아웃
+      </button>
+
+      {pendingFile && (
+        <Modal title="백업 파일 복원" onClose={() => !importing && setPendingFile(null)} disableOverlayClose={importing}>
+          <p style={{ fontSize: 13.5, color: "var(--text)", margin: "0 0 8px", fontWeight: 700 }}>
+            "{pendingFile.name}" 파일을 복원할까요?
+          </p>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: "0 0 16px", lineHeight: 1.5 }}>
+            파일 안의 기록과 현재 계정의 기록이 겹치면 파일 내용으로 덮어써요. 이 작업은 되돌릴 수 없어요.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={confirmImport} disabled={importing} style={{ ...goldBtn, flex: 1, justifyContent: "center", opacity: importing ? 0.6 : 1, cursor: importing ? "not-allowed" : "pointer" }}>
+              {importing ? "복원 중…" : "복원하기"}
+            </button>
+            <button onClick={() => setPendingFile(null)} disabled={importing} style={{ ...ghostBtn, flex: 1, justifyContent: "center", display: "flex" }}>취소</button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ============================================================
    SHARED UI PIECES
    ============================================================ */
 function SectionTitle({ icon, text }) {
@@ -1083,6 +1249,19 @@ function AuthScreen({ onAuthed }) {
   const [signupDone, setSignupDone] = useState(null); // email string once signed up
 
   const refs = { loginId: useRef(null), email: useRef(null), password: useRef(null), password2: useRef(null) };
+  const screenRef = useRef(null);
+
+  // 모바일 사파리(iOS) 등에서 탭 전환 시 이전 상태의 버튼/텍스트가
+  // 리페인트되지 않고 잔상처럼 남는 문제가 있어, 상태 변경 시 강제로
+  // 리플로우/리페인트를 유도한다. (스크롤을 살짝 하면 사라지는 것과 동일한 효과)
+  useEffect(() => {
+    const el = screenRef.current;
+    if (!el) return;
+    el.style.transform = "translateZ(0)";
+    void el.offsetHeight; // force reflow
+    const id = requestAnimationFrame(() => { if (el) el.style.transform = ""; });
+    return () => cancelAnimationFrame(id);
+  }, [mode]);
 
   const setCheckFor = (field, text, good) => setCheck(c => ({ ...c, [field]: { text, good } }));
   const clearCheckFor = (field) => setCheck(c => ({ ...c, [field]: null }));
@@ -1193,7 +1372,7 @@ function AuthScreen({ onAuthed }) {
   }
 
   return (
-    <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", padding: "100px 16px 16px", colorScheme: "light" }}>
+    <div ref={screenRef} style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", padding: "100px 16px 16px", colorScheme: "light" }}>
       <div style={{
         background: "linear-gradient(135deg, var(--accent), var(--accent-deep))",
         borderRadius: 16, padding: "22px 14px", marginBottom: 24, textAlign: "center",
@@ -1261,6 +1440,7 @@ function AuthScreen({ onAuthed }) {
         )}
 
         <button
+          key={mode}
           onClick={() => (mode === "login" ? doLogin() : doSignup())} disabled={busy}
           style={{ width: "100%", marginTop: 20, padding: "11px 0", border: "none", borderRadius: 10, background: "var(--accent-deep)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: busy ? "not-allowed" : "pointer", opacity: busy ? 0.6 : 1 }}
         >
@@ -1335,6 +1515,7 @@ function TabBar({ tab, setTab }) {
     { id: "games", label: "게임", Icon: IconController },
     { id: "payments", label: "과금", Icon: IconWallet },
     { id: "stats", label: "통계", Icon: IconBarChart },
+    { id: "settings", label: "설정", Icon: IconSettings },
   ];
   return (
     <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, display: "flex", background: "var(--accent)", borderTop: "1px solid var(--border)", padding: "8px 4px 10px" }}>
@@ -1520,6 +1701,90 @@ function GameLedger({ userId }) {
     if (patch.importRunDates !== undefined) setImportRunDates(patch.importRunDates);
   }, [userId, showToast]);
 
+  // --- 테마(팔레트) 설정: profiles.theme 컬럼 (없다면 SQL 마이그레이션 필요) ---
+  const [theme, setTheme] = useState("default");
+  const loadThemeSetting = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await sb.from("profiles").select("theme").eq("id", userId).single();
+    if (!error && data && data.theme && THEMES[data.theme]) {
+      setTheme(data.theme);
+      applyTheme(data.theme);
+    } else {
+      applyTheme("default");
+    }
+  }, [userId]);
+  useEffect(() => { loadThemeSetting(); }, [loadThemeSetting]);
+
+  const changeTheme = useCallback(async (themeId) => {
+    const prev = theme;
+    setTheme(themeId);
+    applyTheme(themeId); // 즉시 반영
+    const { error } = await sb.from("profiles").update({ theme: themeId }).eq("id", userId);
+    if (error) {
+      setTheme(prev);
+      applyTheme(prev);
+      showToast("테마 저장 실패: DB에 theme 컬럼을 추가해주세요");
+      return;
+    }
+    showToast("테마가 적용됐어요");
+  }, [userId, theme, showToast]);
+
+  // --- 데이터 백업/복원 ---
+  const exportBackup = useCallback(() => {
+    const payload = {
+      app: "일퀘가챠 하기 좋은 날",
+      exportedAt: new Date().toISOString(),
+      version: 1,
+      profile: { nickname: username, theme },
+      games: games.map(gameToDbRow).map(({ user_id, ...rest }) => rest),
+      payments: payments.map(paymentToDbRow).map(({ user_id, ...rest }) => rest),
+      questLog: questLog.map(q => ({ game_id: q.gameId, date: q.date, done: q.done })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `일퀘가챠_백업_${todayISO()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast("백업 파일을 내려받았어요");
+  }, [games, payments, questLog, username, theme]);
+
+  const importBackup = useCallback(async (file) => {
+    let data;
+    try {
+      data = JSON.parse(await file.text());
+    } catch (e) {
+      showToast("파일을 읽을 수 없어요. JSON 백업 파일이 맞는지 확인해주세요");
+      return;
+    }
+    if (!data || !Array.isArray(data.games) || !Array.isArray(data.payments) || !Array.isArray(data.questLog)) {
+      showToast("올바른 백업 파일 형식이 아니에요");
+      return;
+    }
+    const gameRows = data.games.map(g => ({ ...g, id: g.id || crypto.randomUUID(), user_id: userId }));
+    const payRows = data.payments.map(p => ({ ...p, id: p.id || crypto.randomUUID(), user_id: userId }));
+    const questRows = data.questLog.map(q => ({ ...q, user_id: userId }));
+
+    if (gameRows.length) {
+      const { error } = await sb.from("games").upsert(gameRows, { onConflict: "id" });
+      if (error) { showToast("복원 실패(게임): " + error.message); return; }
+    }
+    if (payRows.length) {
+      const { error } = await sb.from("payments").upsert(payRows, { onConflict: "id" });
+      if (error) { showToast("복원 실패(과금): " + error.message); return; }
+    }
+    if (questRows.length) {
+      const { error } = await sb.from("quest_log").upsert(questRows, { onConflict: "user_id,game_id,date" });
+      if (error) { showToast("복원 실패(일일퀘스트): " + error.message); return; }
+    }
+    if (data.profile?.nickname) await updateProfile({ nickname: data.profile.nickname });
+    await Promise.all([loadGames(), loadPayments(), loadQuestLog()]);
+    showToast("복원이 완료됐어요");
+  }, [userId, showToast, loadGames, loadPayments, loadQuestLog, updateProfile]);
+
   const [showNicknamePrompt, setShowNicknamePrompt] = useState(false);
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -1566,7 +1831,7 @@ function GameLedger({ userId }) {
 
   return (
     <div style={{ background: "var(--bg)", color: "var(--text)", width: 375, height: 812, margin: "0 auto", display: "flex", flexDirection: "column", position: "relative", borderRadius: 16, overflow: "hidden", border: "3px solid var(--border)", colorScheme: "light" }}>
-      <Header today={today} tab={tab} username={username} onSetUsername={(name) => updateProfile({ nickname: name })} onLogoutClick={() => setConfirmLogout(true)} />
+      <Header today={today} tab={tab} username={username} onSetUsername={(name) => updateProfile({ nickname: name })} />
       <div className="app-scroll" style={{ flex: 1, minWidth: 0, overflowY: "auto", overflowX: "hidden", padding: "0 16px 90px" }}>
         {tab === "today" && (
           <TodayTab dailyGames={dailyGames} hasGames={games.length > 0} questLog={questLog} onToggle={toggleQuest} />
@@ -1588,6 +1853,15 @@ function GameLedger({ userId }) {
           />
         )}
         {tab === "stats" && <StatsTab games={games} payments={payments} questLog={questLog} nativeTotalsByGame={nativeTotalsByGame} today={today} />}
+        {tab === "settings" && (
+          <SettingsTab
+            theme={theme}
+            onSetTheme={changeTheme}
+            onExport={exportBackup}
+            onImport={importBackup}
+            onLogoutClick={() => setConfirmLogout(true)}
+          />
+        )}
       </div>
       <TabBar tab={tab} setTab={setTab} />
       {toast && (
@@ -1636,6 +1910,7 @@ function AppRoot() {
     const { data: sub } = sb.auth.onAuthStateChange((_event, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, []);
+  useEffect(() => { if (!session) applyTheme("default"); }, [session]);
   if (session === undefined) {
     return <div style={{ background: "var(--bg)", width: 375, height: 812, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--muted)", colorScheme: "light" }}>불러오는 중…</div>;
   }
