@@ -1734,9 +1734,11 @@ function GameLedger({ userId }) {
     const existingGameMap = new Map((existingGames || []).map(g => [gameKey(g.title, g.server), g.id]));
 
     const idMap = new Map(); // 백업 파일 속 gameId -> 실제 DB id
+    const serverByFileGameId = new Map(); // 백업 파일 속 gameId -> 서버 (통화 추론용)
     const gameRows = data.games.map(g => {
       const resolvedId = existingGameMap.get(gameKey(g.title, g.server)) || crypto.randomUUID();
       idMap.set(g.id, resolvedId);
+      serverByFileGameId.set(g.id, g.server);
       return {
         id: resolvedId, user_id: userId,
         title: g.title, server: g.server, status: g.status,
@@ -1759,9 +1761,11 @@ function GameLedger({ userId }) {
 
     const newPayRows = [];
     data.payments.forEach(p => {
-      const gid = idMap.get(p.game_id ?? p.gameId);
+      const fileGameId = p.game_id ?? p.gameId;
+      const gid = idMap.get(fileGameId);
       if (!gid) return; // 매핑되는 게임이 없으면 건너뜀
-      const currency = p.currency || "₩";
+      // currency가 비어있으면 ₩로 단정하지 않고, 그 게임의 서버로 추론한다 (한국→₩, 그 외→¥)
+      const currency = p.currency || CURRENCY[serverByFileGameId.get(fileGameId)] || "₩";
       const key = payKey(gid, p.date, p.amount, currency);
       if (existingPaySet.has(key)) return; // 이미 있는 결제 기록
       existingPaySet.add(key);
