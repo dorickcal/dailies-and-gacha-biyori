@@ -450,18 +450,17 @@ function TodayGameRow({ game: g, gToday, done, streak, gYesterday, yesterdayDone
       <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
         <MarqueeText text={g.title} active={active} style={{ fontWeight: 600, fontSize: 14.5 }} />
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: 5, gap: 8 }}>
-          <div style={{ flexShrink: 0 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>{g.server}</span>
-            {!yesterdayDone && (
+          <span style={{ fontSize: 12, color: "var(--muted)", flexShrink: 0 }}>{g.server}</span>
+          <div style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
+            <div style={{ visibility: yesterdayDone ? "hidden" : "visible" }}>
               <button
-                onClick={() => onToggle(g.id, gYesterday, true)}
-                style={{ display: "block", background: "none", border: "none", padding: 0, marginTop: 2, fontSize: 10.5, color: "var(--accent2)", cursor: "pointer", textDecoration: "underline" }}
+                onClick={() => { if (!yesterdayDone) onToggle(g.id, gYesterday, true); }}
+                tabIndex={yesterdayDone ? -1 : 0}
+                style={{ background: "none", border: "none", padding: 0, margin: 0, font: "inherit", fontSize: 10.5, color: "var(--accent2)", cursor: yesterdayDone ? "default" : "pointer", textDecoration: "underline" }}
               >
                 어제도 완료했어요
               </button>
-            )}
-          </div>
-          <div style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
+            </div>
             <div style={{ color: done ? "var(--accent-deep)" : "var(--accent)", fontWeight: 600 }}>이번 달 {streak}일 연속</div>
             <div style={{ color: "var(--muted)" }}>
               {resetIn.hh > 0
