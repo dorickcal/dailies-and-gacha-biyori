@@ -450,7 +450,17 @@ function TodayGameRow({ game: g, gToday, done, streak, gYesterday, yesterdayDone
       <div style={{ flex: 1, minWidth: 0, marginRight: 10 }}>
         <MarqueeText text={g.title} active={active} style={{ fontWeight: 600, fontSize: 14.5 }} />
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginTop: 5, gap: 8 }}>
-          <span style={{ fontSize: 12, color: "var(--muted)", flexShrink: 0 }}>{g.server}</span>
+          <div style={{ flexShrink: 0 }}>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{g.server}</span>
+            {!yesterdayDone && (
+              <button
+                onClick={() => onToggle(g.id, gYesterday, true)}
+                style={{ display: "block", background: "none", border: "none", padding: 0, marginTop: 2, fontSize: 10.5, color: "var(--accent2)", cursor: "pointer", textDecoration: "underline" }}
+              >
+                어제도 완료했어요
+              </button>
+            )}
+          </div>
           <div style={{ fontSize: 11, textAlign: "right", lineHeight: 1.5, whiteSpace: "nowrap" }}>
             <div style={{ color: done ? "var(--accent-deep)" : "var(--accent)", fontWeight: 600 }}>이번 달 {streak}일 연속</div>
             <div style={{ color: "var(--muted)" }}>
@@ -458,14 +468,6 @@ function TodayGameRow({ game: g, gToday, done, streak, gYesterday, yesterdayDone
                 ? `초기화까지 ${resetIn.hh}시간 ${resetIn.mm}분`
                 : `초기화까지 ${resetIn.mm}분 ${resetIn.ss}초`}
             </div>
-            {!yesterdayDone && (
-              <button
-                onClick={() => onToggle(g.id, gYesterday, true)}
-                style={{ background: "none", border: "none", padding: 0, marginTop: 2, fontSize: 10.5, color: "var(--accent2)", cursor: "pointer", textDecoration: "underline" }}
-              >
-                어제도 완료했어요
-              </button>
-            )}
           </div>
         </div>
       </div>
