@@ -151,6 +151,35 @@ const THEMES = {
   },
 };
 const THEME_LIST = Object.keys(THEMES).map(id => ({ id, ...THEMES[id] }));
+
+/* ============================================================
+   LIST SORT (일일/게임 탭 표시 순서)
+   ============================================================ */
+const SORT_OPTIONS = [
+  { id: "name", label: "가나다 순", desc: "게임 이름 순" },
+  { id: "created", label: "게임 등록일 순", desc: "앱에 게임을 추가한 순서" },
+  { id: "account", label: "계정 생성일 순", desc: "계정 생성일이 없는 게임은 맨 아래, 등록일 순" },
+];
+const SORT_IDS = SORT_OPTIONS.map(o => o.id);
+const SORT_LS_KEY = "dgb-list-sort";
+function sortGames(games, mode) {
+  const byCreated = (a, b) => (a.createdAt || "").localeCompare(b.createdAt || "");
+  const byName = (a, b) => a.title.localeCompare(b.title, "ko") || a.server.localeCompare(b.server, "ko");
+  const arr = [...games];
+  if (mode === "name") return arr.sort((a, b) => byName(a, b) || byCreated(a, b));
+  if (mode === "account") {
+    return arr.sort((a, b) => {
+      const as = a.startDate || "", bs = b.startDate || "";
+      if (as && bs) return as.localeCompare(bs) || byCreated(a, b);
+      if (as) return -1;
+      if (bs) return 1;
+      return byCreated(a, b);
+    });
+  }
+  return arr.sort(byCreated); // "created"
+}
+// 일일 탭 카드와 게임 탭 카드가 같은 높이를 쓰도록 하는 공용 값
+const CARD_HEIGHT = 106;
 function applyTheme(themeId) {
   const t = THEMES[themeId] || THEMES.default;
   const root = document.documentElement.style;
@@ -443,7 +472,7 @@ function TodayGameRow({ game: g, gToday, done, streak, gYesterday, yesterdayDone
   const urgent = resetIn.hh === 0 && !done;
   return (
     <div
-      style={{ display: "flex", alignItems: "stretch", background: done ? "var(--surface2)" : "var(--surface)", border: `1px solid ${done ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, padding: "14px 14px", marginBottom: 10, transition: "all .15s", animation: urgent ? "blink-card-bg 2s ease-in-out infinite, blink-border 2s ease-in-out infinite" : "none" }}
+      style={{ display: "flex", alignItems: "stretch", background: done ? "var(--surface2)" : "var(--surface)", border: `1px solid ${done ? "var(--accent)" : "var(--border)"}`, borderRadius: 12, padding: "14px 14px", marginBottom: 10, height: CARD_HEIGHT, transition: "all .15s", animation: urgent ? "blink-card-bg 2s ease-in-out infinite, blink-border 2s ease-in-out infinite" : "none" }}
       onMouseEnter={() => setActive(true)} onMouseLeave={() => setActive(false)}
       onTouchStart={() => setActive(true)} onTouchEnd={() => setActive(false)} onTouchCancel={() => setActive(false)}
     >
@@ -528,35 +557,37 @@ function GamesTab({ games, totalsByGame, monthTotalsByGame, onSave, onDelete }) 
       </div>
       {games.length === 0 && <EmptyState text={"아직 등록된 게임이 없어요.\n'추가' 버튼을 눌러 게임을 추가해보세요."} />}
       {visible.map(g => (
-        <div key={g.id} style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 14px", marginBottom: 8, opacity: g.status === "중단" ? 0.55 : 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div style={{ fontWeight: 600, fontSize: 16, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{g.title}</div>
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
+        <div key={g.id} style={{ display: "flex", alignItems: "stretch", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: "14px 14px", marginBottom: 10, height: CARD_HEIGHT, opacity: g.status === "중단" ? 0.55 : 1 }}>
+          {/* 왼쪽: 게임명 / 비고 / 서버 (상단 정렬, 위에서 아래로) */}
+          <div style={{ flex: 1, minWidth: 0, marginRight: 10, display: "flex", flexDirection: "column", justifyContent: "flex-start" }}>
+            <div style={{ fontWeight: 600, fontSize: 14.5, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 5, minHeight: 16, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.notes || "\u00A0"}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 3 }}>{g.server}</div>
+          </div>
+          {/* 오른쪽: 수정/삭제(위) + 이번 달/총액(아래) */}
+          <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "flex-end" }}>
+            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <button onClick={() => setEditing(g)} style={iconBtn}><IconPencil size={14} /></button>
               <button onClick={() => setConfirmDelete(g)} style={iconBtn}><IconTrash size={14} /></button>
             </div>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 4 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{g.notes || ""}</span>
-            <span
-              onClick={() => toggleCurrency(g.id)}
-              style={{ fontSize: 12.5, fontFamily: "ui-monospace, monospace", color: (monthTotalsByGame[g.id] || 0) > 0 ? "var(--accent2)" : "var(--accent)", fontWeight: 600, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
-            >
-              이번 달 {jpyView[g.id]
-                ? fmtMoney((monthTotalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
-                : fmtMoney(monthTotalsByGame[g.id] || 0, "₩")}
-            </span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 3 }}>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>{g.server}</span>
-            <span
-              onClick={() => toggleCurrency(g.id)}
-              style={{ fontSize: 11.5, fontFamily: "ui-monospace, monospace", color: "var(--accent-deep)", fontWeight: (monthTotalsByGame[g.id] || 0) > 0 ? 700 : 400, cursor: "pointer" }}
-            >
-              총 {jpyView[g.id]
-                ? fmtMoney((totalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
-                : fmtMoney(totalsByGame[g.id] || 0, "₩")}
-            </span>
+            <div style={{ textAlign: "right", whiteSpace: "nowrap" }}>
+              <div
+                onClick={() => toggleCurrency(g.id)}
+                style={{ fontSize: 12.5, lineHeight: 1.4, fontFamily: "ui-monospace, monospace", color: (monthTotalsByGame[g.id] || 0) > 0 ? "var(--accent2)" : "var(--accent)", fontWeight: 600, cursor: "pointer" }}
+              >
+                이번 달 {jpyView[g.id]
+                  ? fmtMoney((monthTotalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
+                  : fmtMoney(monthTotalsByGame[g.id] || 0, "₩")}
+              </div>
+              <div
+                onClick={() => toggleCurrency(g.id)}
+                style={{ fontSize: 11.5, lineHeight: 1.4, fontFamily: "ui-monospace, monospace", color: "var(--accent-deep)", fontWeight: (monthTotalsByGame[g.id] || 0) > 0 ? 700 : 400, cursor: "pointer" }}
+              >
+                총 {jpyView[g.id]
+                  ? fmtMoney((totalsByGame[g.id] || 0) / JPY_TO_KRW_RATE, "¥")
+                  : fmtMoney(totalsByGame[g.id] || 0, "₩")}
+              </div>
+            </div>
           </div>
         </div>
       ))}
@@ -1095,7 +1126,7 @@ function StatsTab({ games, payments, questLog, nativeTotalsByGame, today }) {
 /* ============================================================
    SETTINGS TAB
    ============================================================ */
-function SettingsTab({ theme, onSetTheme, onExport, onImport, onLogoutClick }) {
+function SettingsTab({ theme, onSetTheme, listSort, onSetListSort, onExport, onImport, onLogoutClick }) {
   const fileInputRef = useRef(null);
   const [pendingFile, setPendingFile] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -1139,6 +1170,31 @@ function SettingsTab({ theme, onSetTheme, onExport, onImport, onLogoutClick }) {
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{t.name}</div>
+              </div>
+              {active && <IconCheck size={16} style={{ color: "var(--accent-deep)", flexShrink: 0 }} />}
+            </button>
+          );
+        })}
+      </div>
+
+      <SectionTitle icon={<IconList size={14} />} text="목록 표시 순서" />
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {SORT_OPTIONS.map(o => {
+          const active = listSort === o.id;
+          return (
+            <button
+              key={o.id}
+              onClick={() => onSetListSort(o.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 12, textAlign: "left",
+                background: active ? "var(--surface2)" : "var(--surface)",
+                border: `1.5px solid ${active ? "var(--accent-deep)" : "var(--border)"}`,
+                borderRadius: 12, padding: "10px 12px", cursor: "pointer",
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: "var(--text)" }}>{o.label}</div>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{o.desc}</div>
               </div>
               {active && <IconCheck size={16} style={{ color: "var(--accent-deep)", flexShrink: 0 }} />}
             </button>
@@ -1518,6 +1574,7 @@ function GameLedger({ userId }) {
   const dbRowToGame = (row) => ({
     id: row.id, title: row.title, server: row.server, status: row.status,
     notes: row.notes || "", resetHour: row.reset_hour ?? 0, startDate: row.start_date, endDate: row.end_date,
+    createdAt: row.created_at || "",
   });
   const gameToDbRow = (g) => ({
     id: g.id, user_id: userId, title: g.title, server: g.server, status: g.status,
@@ -1691,6 +1748,27 @@ function GameLedger({ userId }) {
     showToast("테마가 적용됐어요");
   }, [userId, theme, showToast]);
 
+  // --- 목록 표시 순서: profiles.list_sort 컬럼 + 이 기기(localStorage) 백업 ---
+  const [listSort, setListSort] = useState(() => {
+    try { const v = localStorage.getItem(SORT_LS_KEY); if (SORT_IDS.includes(v)) return v; } catch (e) {}
+    return "created";
+  });
+  const loadListSort = useCallback(async () => {
+    if (!userId) return;
+    const { data, error } = await sb.from("profiles").select("list_sort").eq("id", userId).single();
+    if (!error && data && SORT_IDS.includes(data.list_sort)) {
+      setListSort(data.list_sort);
+      try { localStorage.setItem(SORT_LS_KEY, data.list_sort); } catch (e) {}
+    }
+  }, [userId]);
+  useEffect(() => { loadListSort(); }, [loadListSort]);
+  const changeListSort = useCallback(async (mode) => {
+    setListSort(mode);
+    try { localStorage.setItem(SORT_LS_KEY, mode); } catch (e) {}
+    const { error } = await sb.from("profiles").update({ list_sort: mode }).eq("id", userId);
+    showToast(error ? "순서를 적용했어요 (이 기기에만 저장됨)" : "표시 순서가 적용됐어요");
+  }, [userId, showToast]);
+
   // --- 데이터 백업/복원 ---
   const exportBackup = useCallback(() => {
     const payload = {
@@ -1735,7 +1813,7 @@ function GameLedger({ userId }) {
     // 대신 title+server로 "같은 게임"을 찾아 실제 DB id로 매핑하고, 없으면 새로 만든다.
     const { data: existingGames, error: gFetchErr } = await sb.from("games").select("id, title, server").eq("user_id", userId);
     if (gFetchErr) { showToast("복원 실패(기존 게임 조회): " + gFetchErr.message); return; }
-    const gameKey = (t, s) => `${t} ${s}`;
+    const gameKey = (t, s) => `${t}${s}`;
     const existingGameMap = new Map((existingGames || []).map(g => [gameKey(g.title, g.server), g.id]));
 
     const idMap = new Map(); // 백업 파일 속 gameId -> 실제 DB id
@@ -1835,7 +1913,8 @@ function GameLedger({ userId }) {
     if (loaded && !username) { setNicknameDraft(""); setShowNicknamePrompt(true); }
   }, [loaded]);
 
-  const dailyGames = useMemo(() => games.filter(g => g.status === "진행"), [games]);
+  const sortedGames = useMemo(() => sortGames(games, listSort), [games, listSort]);
+  const dailyGames = useMemo(() => sortedGames.filter(g => g.status === "진행"), [sortedGames]);
   const gameByIdAll = useMemo(() => Object.fromEntries(games.map(g => [g.id, g])), [games]);
   const paymentToKRW = useCallback((p) => {
     const g = gameByIdAll[p.gameId];
@@ -1880,7 +1959,7 @@ function GameLedger({ userId }) {
           <TodayTab dailyGames={dailyGames} hasGames={games.length > 0} questLog={questLog} onToggle={toggleQuest} />
         )}
         {tab === "games" && (
-          <GamesTab games={games} totalsByGame={totalsByGame} monthTotalsByGame={monthTotalsByGame}
+          <GamesTab games={sortedGames} totalsByGame={totalsByGame} monthTotalsByGame={monthTotalsByGame}
             onSave={saveGame}
             onDelete={deleteGame}
           />
@@ -1900,6 +1979,8 @@ function GameLedger({ userId }) {
           <SettingsTab
             theme={theme}
             onSetTheme={changeTheme}
+            listSort={listSort}
+            onSetListSort={changeListSort}
             onExport={exportBackup}
             onImport={importBackup}
             onLogoutClick={() => setConfirmLogout(true)}
